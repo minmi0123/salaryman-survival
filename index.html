@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>직장인으로 살아남기</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:#000;font-family:"맑은 고딕","Malgun Gothic",sans-serif;
+     font-size:14px;line-height:1.5;-webkit-text-size-adjust:100%}
+#app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;
+     border-left:1px solid #000;border-right:1px solid #000}
+
+/* ── 상태바 ── */
+#bar{border-bottom:2px solid #000;padding:8px 10px;position:sticky;top:0;background:#fff;z-index:10}
+#bar .row1{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:6px}
+.g{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:12px}
+.g .nm{width:34px;flex:none}
+.g .track{flex:1;height:12px;border:1px solid #000;position:relative;background:#fff}
+.g .track{display:block}
+.g .fill{display:block;height:100%;background:#000;transition:width .18s linear}
+.g .fill.warn{background:repeating-linear-gradient(45deg,#000,#000 3px,#fff 3px,#fff 6px)}
+.g .val{width:74px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.g .over{font-weight:bold}
+#warnrow{font-size:12px;margin-top:4px;letter-spacing:2px}
+
+/* ── 본문 ── */
+#screen{flex:1;padding:12px 10px 16px;overflow-y:auto}
+.clock{text-align:center;margin:14px 0 4px;font-size:40px;font-weight:bold;
+       letter-spacing:3px;font-variant-numeric:tabular-nums}
+.blockname{text-align:center;font-size:15px;margin-bottom:10px}
+.delta{text-align:center;font-size:13px;min-height:20px;margin-bottom:8px}
+.delta span{margin:0 5px}
+
+/* ── 선택지 카드 ── */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.card{border:1.5px solid #000;padding:14px 8px;cursor:pointer;background:#fff;text-align:center;
+      font:inherit;color:inherit;font-weight:bold;font-size:14.5px}
+.card:hover{background:#f0f0f0}
+.card:active{background:#ddd}
+.card .t{font-weight:bold;margin-bottom:4px}
+.card .e{font-size:12px;color:#333;white-space:pre-line}
+.card .risk{font-size:11px;margin-top:3px;font-weight:bold}
+.card:disabled{opacity:.35;cursor:not-allowed}
+.card{position:relative}
+.card[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;right:0;top:100%;
+  z-index:30;background:#000;color:#fff;padding:7px 9px;font-size:11.5px;line-height:1.45;
+  white-space:pre-line;border:1px solid #000;text-align:left;pointer-events:none}
+
+/* ── 탭바 ── */
+#tabs{display:flex;border-top:2px solid #000;position:sticky;bottom:0;background:#fff}
+#tabs button{flex:1;padding:11px 2px;border:none;border-right:1px solid #000;background:#fff;
+             font:inherit;font-size:13px;cursor:pointer}
+#tabs button:last-child{border-right:none}
+#tabs button.on{background:#000;color:#fff;font-weight:bold}
+.note{text-align:center;font-size:11px;color:#555;padding:3px 0}
+
+/* ── 팝업 ── */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;
+         align-items:center;justify-content:center;padding:16px;z-index:50}
+#overlay.on{display:flex}
+.pop{background:#fff;border:2px solid #000;max-width:420px;width:100%;padding:18px 16px;
+     max-height:90vh;overflow-y:auto}
+.pop h2{text-align:center;font-size:19px;margin-bottom:10px}
+.pop .desc{text-align:center;margin-bottom:16px;white-space:pre-line;font-size:14px}
+.pop .desc.mono{font-family:Consolas,monospace;text-align:left;font-size:13px}
+.pop .opts{display:flex;flex-direction:column;gap:8px}
+.pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer}
+.pop .opts button:hover{background:#f0f0f0}
+.pop .opts button:disabled{opacity:.35;cursor:not-allowed}
+.pop .cost{font-size:12px;color:#333}
+
+/* ── 표 / 목록 ── */
+h3{font-size:15px;border-bottom:1.5px solid #000;padding-bottom:3px;margin:14px 0 8px}
+h3:first-child{margin-top:0}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{border:1px solid #000;padding:4px 6px;text-align:left}
+th{background:#000;color:#fff;font-weight:normal}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.slot{border:1.5px solid #000;padding:6px 4px;text-align:center;font-size:12px;position:relative}
+.slot .cnt{position:absolute;top:2px;right:4px;font-weight:bold}
+.slot .pr{font-size:11px;color:#333;margin-top:3px}
+.slot button{margin-top:5px;width:100%;border:1px solid #000;background:#fff;font:inherit;
+             font-size:11px;padding:3px;cursor:pointer}
+.slot .btns{display:flex;gap:3px}
+.slot .btns button{margin-top:5px}
+.slot button:disabled{opacity:.3;cursor:not-allowed}
+
+/* ── 스킬 ── */
+.tree{margin-bottom:16px}
+.tree .hd{font-weight:bold;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:6px}
+.node{display:flex;align-items:flex-start;gap:8px;border:1px solid #000;padding:6px;margin-bottom:5px}
+.node.locked{opacity:.55}
+.node.locked .info{filter:blur(4.5px);user-select:none;pointer-events:none}
+.node.locked .lv{filter:blur(3px)}
+.node.maxed{background:#f2f2f2}
+.node .info{flex:1;font-size:12.5px}
+.node .info b{font-size:13px}
+.node .q{font-size:11px;color:#444;font-style:italic}
+.node .lv{font-weight:bold;font-size:12px;white-space:nowrap}
+.node button{border:1px solid #000;background:#fff;font:inherit;font-size:11px;padding:4px 7px;
+             cursor:pointer;white-space:nowrap}
+.node button:disabled{opacity:.3;cursor:not-allowed}
+.endnode{border-width:2px}
+
+/* ── 도감 ── */
+.dex{display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:12px}
+.dexit{border:1px solid #000;padding:5px 6px}
+.dexit.no{color:#aaa;border-style:dashed}
+
+#log{margin-top:14px;font-size:11.5px;border-top:1px dashed #000;padding-top:6px;
+     max-height:150px;overflow-y:auto}
+#log div{padding:1px 0}
+#log div.b{font-weight:bold}
+.center{text-align:center}
+.big{font-size:22px;font-weight:bold;text-align:center;margin:18px 0}
+.sub{text-align:center;font-size:13px;margin-bottom:14px;white-space:pre-line}
+.btnrow{display:flex;gap:8px;margin-top:14px}
+.btnrow button{flex:1;border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer}
+.btnrow button:hover{background:#f0f0f0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar"></div>
+  <div id="screen"></div>
+  <div class="note" id="tabnote">아래 메뉴는 시간이 흐르지 않습니다</div>
+  <div id="tabs"></div>
+</div>
+<div id="overlay"><div class="pop" id="pop"></div></div>
+
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════════
+   1. DATA
+   ══════════════════════════════════════════════════════════════ */
+const CFG = {
+  P: 3.0,
+  배정: [40, 48, 56, 64],
+  승진일: [0, 8, 16, 24],
+  직급: ['사원', '계장', '대리', '책임'],
+  배정증가: 0.01,
+  피로계수: 0.015,
+  취침M: 5, 취침H: 4,
+  시작금: 30000, 주급: 100000, 월세: 140000,
+  지각확률: 0.25, 발각확률: 0.25,
+  SP율: 0.5,
+  월세임계: 2, 게이지임계: 3, 총경고임계: 3,
+  아이템회복: 40,
+  엔딩돈: 150000,
+  부동산가: 300000,
+};
+
+const 평일블록 = ['출근준비', '오전업무', '점심', '오후업무', '퇴근', '저녁'];
+const 주말블록 = ['주말오전', '주말오후', '주말저녁'];
+
+const BLK = {
+  출근준비:  { h: 2, t: '07:00', label: '출근준비' },
+  오전업무:  { h: 3, t: '09:00', label: '오전업무' },
+  점심:      { h: 1, t: '12:00', label: '점심' },
+  오후업무:  { h: 5, t: '13:00', label: '오후업무' },
+  퇴근:      { h: 1, t: '18:00', label: '퇴근' },
+  저녁:      { h: 5, t: '19:00', label: '저녁' },
+  주말오전:  { h: 5, t: '09:00', label: '주말 오전' },
+  주말오후:  { h: 5, t: '14:00', label: '주말 오후' },
+  주말저녁:  { h: 5, t: '19:00', label: '주말 저녁' },
+};
+
+// m=멘탈 h=건강 money=돈 work=처리시간(P곱) caught=발각 late=지각 need=필요스킬
+const CH = {
+  출근준비: [
+    { k: '바로 출근하기', q: '오늘도 일하러 갑니당', m: -3, h: +1, work: 1 },
+    { k: '커피 사먹기',   q: '나도 이제 어엿한 직장인', m: +15, h: -1, money: -5000,
+      gate: { line: '업무관련', sp: 3 } },
+    { k: '더자기',        q: '좀만 쉬었다갈게요', m: +15, h: +15, late: true,
+      gate: { line: '자기관리관련', sp: 3 } },
+    { k: '한약',          q: '이게 생명수구나', m: 0, h: +15, money: -5000,
+      gate: { line: '자기관리관련', sp: 3 } },
+  ],
+  업무: [
+    { k: '일하기',       q: '열심히 일해보자',
+      m3: -10, h3: -5,  m5: -18, h5: -9,  workAll: true },
+    { k: '일하는척하기', q: '가끔 쉬면서 할게요',
+      m3: -5,  h3: -3,  m5: -9,  h5: -5,  workHalf: true, caught: true, caughtRate: 0.5,
+      slack: true, gate: { total: 3 } },
+    { k: '대놓고 놀기',  q: '이짬에 일을 해야해?',
+      m3: +8,  h3: +4,  m5: +12, h5: +6,  caught: true, slack: true,
+      gate: { total: 10 } },
+    { k: '몰래 부업하기', q: '월급이 밥먹여주나?',
+      m3: -6,  h3: -3,  m5: -10, h5: -5,  money3: 9000, money5: 15000,
+      caught: true, sneak: true, gate: { line: '부업알바관련', sp: 6 } },
+    { k: '운동하기',     q: '타자 칠때마다 근손실 나는데요',
+      m3: 0,   h3: +7,  m5: 0,   h5: +11, need: '헬창' },
+  ],
+  점심: [
+    { k: '점심 먹기',            q: '오늘도 수고했다', m: +5,  h: +5,  money: -7000 },
+    { k: '자리에서 먹고 일하기', q: '먹으면서 하면 되지', m: -4,  h: +1,  money: -3000, work: 0.5 },
+    { k: '굶고 일하기',          q: '밥이 넘어가나', m: -10, h: -10, work: 1 },
+    { k: '부업하기',             q: '이 시간도 아깝다', m: -4,  h: -3,  money: +3000 },
+    { k: '잠자기',               q: '잠이부족행', m: +8,  h: -5 },
+    { k: '팀장님과 점심',        q: '팀장님 밥사주세요!', m: -8, h: +5, workFlat: 15,
+      gate: { line: '업무관련', sp: 12 } },
+  ],
+  퇴근: [
+    { k: '집가기',   q: '오늘은 여기까지', m: +2, h: 0 },
+    { k: '야근하기', q: '오늘도 별 보고 가는구나', m: -25, h: -25, work: 5, night: true },
+    { k: '짬때리기', q: '오늘만 이것 좀 처리해줄 수 있을까?', workFlat: 60, cardUse: 1,
+      gate: { skill: '일대신해줌', card: 1 } },
+  ],
+  저녁: [
+    { k: '놀기',       q: '집이 최고야', m: +10, h: 0 },
+    { k: '운동하기',   q: '찌뿌둥한데...', m: 0, h: +10 },
+    { k: '알바하기',   q: '짬내서 일해볼까?', m: -10, h: -18, money: +25000, alba: true },
+    { k: '부업하기',   q: '블로그나 써보자', m: -7, h: -7, money: +15000,
+      gate: { line: '부업알바관련', sp: 1 } },
+    { k: '자기계발',   q: '이직할수도 있으니까', m: -8, h: 0, workFlat: 15,
+      gate: { line: '업무관련', sp: 6 } },
+    { k: '친구 만나기', q: '술이나 한잔하자', m: +18, h: 0, money: -10000,
+      gate: { line: '자기관리관련', sp: 6 } },
+  ],
+  주말: [
+    { k: '부업하기',   q: '부자가 될 수 있을까?', m: -7,  h: -7,  money: +15000 },
+    { k: '알바하기',   q: '알바라도 해보자', m: -10, h: -18, money: +25000, alba: true },
+    { k: '잔업하기',   q: '주말에도 노예구나', m: -8,  h: -8,  work: 5 },
+    { k: '놀기',       q: '침대가 최고야', m: +12, h: 0 },
+    { k: '운동하기',   q: '운동이 힘이다', m: 0,   h: +12 },
+    { k: '팀원에게 전화하기', q: '아니 잘 지내나 해서...', m: -10, h: 0, card: 1,
+      need: '일대신해줌' },
+    { k: '기도하기',   q: '1억 받게 해주세요 아멘', m: +25, h: 0, money: -5000,
+      need: '주말예배' },
+  ],
+};
+
+// 취침 문구 (랜덤)
+const SLEEP = ['생명유지중...', '잠자는중...', '미래를 준비하는중...',
+               '하루하루 살아가는중...', '먹고살걱정중...'];
+
+// 스킬 트리 — 계열 > 구간(기본/A/B)
+const TREE = [
+  { 계열: '업무관련', 축: '업무 게이지', 구간: [
+    { nm: '기본', nodes: [
+      { id: '일잘러',     max: 3, d: '처리량 증가', q: '' },
+      { id: '일대신해줌', max: 3, d: '팀원 카드 최대보유 +1 · 월급 +8%', q: '내가 대신 해줄게! 대신 나중에 나 도와주라' },
+    ]},
+    { nm: '사장님 트리 (건강+돈)', tree: '사장님', nodes: [
+      { id: '짬처리',   max: 3, d: '건강소모 -18%', q: '야 너가 좀 대신 일해라' },
+      { id: '사내정치', max: 1, d: '월급 +25%', q: '상무님 덕분입니다~' },
+      { id: '임원진급', max: 1, d: '월급 +50%', q: '제가 회사를 살려보겠습니다' },
+      { id: '하극상',   max: 1, d: '엔딩', q: '매출이 안나는데 자리 좀 비켜주시죠?', end: '하극상' },
+    ]},
+    { nm: '팀장님 트리 (멘탈+업무)', tree: '팀장님', nodes: [
+      { id: 'ai사용',       max: 3, d: '일하기 멘탈소모 -18%', q: '자동화좀 시켜놔야지' },
+      { id: '팀원강화',     max: 1, d: '배정량 -15% · 월급 +15%', q: '얘들아 힘든일 있으면 말하구' },
+      { id: '칼퇴문화',     max: 1, d: '야근 소모 -30%', q: '다들 일찍 들어가~' },
+      { id: '연금이나타자', max: 1, d: '엔딩', q: '직장이 최고야...', end: '연금이나타자' },
+    ]},
+  ]},
+  { 계열: '부업알바관련', 축: '돈', 구간: [
+    { nm: '기본', nodes: [
+      { id: 'MZ사원',   max: 3, d: '부업·알바 멘탈소모 -15%', q: '회사에서 일을 한다구요??' },
+      { id: '재빠른손', max: 1, d: '부업·알바 수입 +20%', q: '연봉올리는것보다 더 쉬운데용' },
+    ]},
+    { nm: '돈많은백수 트리 (알바)', tree: '돈많은백수', nodes: [
+      { id: '알바n잡',            max: 3, d: '알바수입 +25%', q: '' },
+      { id: '자는척',             max: 3, d: '딴짓 중에도 업무 일부 처리', q: '아니구 자는건데요' },
+      { id: '무지출챌린지',       max: 1, d: '월세 -30%', q: '어차피 회사 짤리면 여기 못 살아요' },
+      { id: '직장인 왜하는데ㅋㅋ', max: 1, d: '엔딩', q: '', end: '직장인 왜하는데ㅋㅋ' },
+    ]},
+    { nm: '크리에이터 트리 (부업)', tree: '크리에이터', nodes: [
+      { id: '사생활 보호 모니터',  max: 3, d: '발각 방어 50/75/100%', q: '엄... 일하는건가.. 열심히 하게나' },
+      { id: 'SNS개설',            max: 1, d: '부업수입 +50%', q: '좋아요 구독 알람설정까징' },
+      { id: '멀티태스킹',          max: 3, d: '몰래부업 중에도 업무 처리', q: '' },
+      { id: '이제 이게 본업인데요?', max: 1, d: '엔딩', q: '', end: '이제 이게 본업인데요?' },
+    ]},
+  ]},
+  { 계열: '아이템관련', 축: '경고 예산', 구간: [
+    { nm: '기본', nodes: [
+      { id: '약·담배 효율', max: 3, d: '아이템 효과 +30%', q: '이거없으면 어떻게사나' },
+      { id: '단골',        max: 1, d: '상점 가격 -15%', q: '사장님 늘 오던 걸로' },
+    ]},
+    { nm: '검은손 트리 (약·자가조달)', tree: '검은손', nodes: [
+      { id: '약 제조',     max: 3, d: '부작용 제거 · 주말 자동생성', q: '만들어서 먹어야지' },
+      { id: '약 판매',     max: 3, d: '주말 판매 수입', q: '너네도 해봐 엄청좋아' },
+      { id: '다크웹 탐색', max: 1, d: '자동생성 개수 +1', q: '좋은 정보 있나...?' },
+      { id: '제가 좀 잘 만들어요', max: 1, d: '엔딩', q: '', end: '제가 좀 잘 만들어요' },
+    ]},
+    { nm: '사업가 트리 (담배·유통)', tree: '사업가', nodes: [
+      { id: '담배 제조',   max: 3, d: '부작용 제거 · 주말 자동생성', q: '만들어서 피워야지' },
+      { id: '담배 판매',   max: 3, d: '주말 판매 수입', q: '만드는게 더 낫겠는데?' },
+      { id: '거래처 확보', max: 1, d: '판매 단가 +100%', q: '한 번 드셔보시라니까' },
+      { id: '저도 이제 대표입니다', max: 1, d: '엔딩', q: '', end: '저도 이제 대표입니다' },
+    ]},
+  ]},
+  { 계열: '자기관리관련', 축: '회복률', 구간: [
+    { nm: '기본', nodes: [
+      { id: '규칙적인 생활', max: 3, d: '취침 회복량 +30%', q: '이정도면 거의 농사꾼' },
+      { id: '주말은 쉬는 날', max: 1, d: '주말 회복량 +40%', q: '개인 시간은 지켜주시죠?' },
+    ]},
+    { nm: '운동 트리 (건강·평일형)', tree: '운동', sub: true, nodes: [
+      { id: '운동하기', max: 3, d: '운동 건강회복 +30% · 처리량 +0.3', q: '운동이 생명이다.' },
+      { id: '달리기',   max: 3, d: '지각 방어 33/67/100%', q: '이럴려고 운동했어요' },
+      { id: '헬창',     max: 1, d: '업무시간에 [운동하기] 해금', q: '타자 칠때마다 근손실 나는데요' },
+      { id: '회사는 헬스장 가는 길에', max: 1, d: '엔딩', q: '', end: '회사는 헬스장 가는 길에' },
+    ]},
+    { nm: '기도 트리 (멘탈·주말형)', tree: '기도', sub: true, nodes: [
+      { id: '기도하기',  max: 3, d: '하루 시작 시 멘탈 +6 · 처리량 +0.3', q: '오늘 하루도 무사히' },
+      { id: '일기쓰기',  max: 3, d: '저녁 회복량 +25%', q: '팀장님 개싫어용' },
+      { id: '주말 예배', max: 1, d: '주말에 [기도하기] 해금', q: '1억 받게 해주세요 아멘' },
+      { id: '이 또한 지나가리라', max: 1, d: '엔딩', q: '', end: '이 또한 지나가리라' },
+    ]},
+  ]},
+];
+
+const SHOP = [
+  { id: '약',        price: 30000,    d: '건강 회복' },
+  { id: '담배',      price: 24000,    d: '멘탈 회복' },
+  { id: 'AI',        price: 50000,    d: '업무 -40 (소모성)' },
+  { id: '시간멈추기', price: 50000,    d: '지각 방어 100%' },
+  { id: '복권',      price: 25000,    d: '긁으면 도박 판정' },
+  { id: '부적',      price: 80000,    d: '운이 필요한 모든 판정 개선 (비소모성)', once: true },
+  { id: '부동산',    price: CFG.부동산가, d: '구매 즉시 · 건물주 엔딩' },
+];
+
+// 조합 엔딩 — [메인트리, 서브트리] -> 이름
+const COMBO = {
+  '사장님|운동': '꼰대임원', '팀장님|운동': '꼰대임원',
+  '크리에이터|운동': '헬스장사장님', '돈많은백수|운동': '치킨집사장님',
+  '검은손|운동': '헬창조직보스', '사업가|운동': '헬창조직보스',
+  '사장님|기도': '출근이 곧 수행', '팀장님|기도': '출근이 곧 수행',
+  '크리에이터|기도': '구독자가 곧 신도', '돈많은백수|기도': '가진 게 없으니 잃을 것도 없다',
+  '검은손|기도': '이거 드시고 구원받으세요', '사업가|기도': '이거 드시고 구원받으세요',
+};
+
+const DEX_ALL = [
+  '하극상', '연금이나타자', '직장인 왜하는데ㅋㅋ', '이제 이게 본업인데요?',
+  '제가 좀 잘 만들어요', '저도 이제 대표입니다', '회사는 헬스장 가는 길에', '이 또한 지나가리라',
+  '꼰대임원', '헬스장사장님', '치킨집사장님', '헬창조직보스',
+  '출근이 곧 수행', '구독자가 곧 신도', '가진 게 없으니 잃을 것도 없다', '이거 드시고 구원받으세요',
+  '건물주', '퇴사', '아사', '백수', '짤림',
+];
+
+const 경고대사 = {
+  멘탈: ['요즘 좀 힘드니?', '회사생활이 다 그래', '그럴거면 나가라'],
+  건강: ['반차내고 병원가봐', '몸이 안좋으면 집에서 쉬어', '그럴거면 나가라'],
+  돈:   ['보증금에서 깔게요', '저도 참는데 한계가 있어요', '당장 나가세요!'],
+  업무: ['일이 왜케 많이밀렸어?', '한사람몫은 해야지', '그럴거면 나가라'],
+};
+
+/* ══════════════════════════════════════════════════════════════
+   2. STATE
+   ══════════════════════════════════════════════════════════════ */
+const SEP = String.fromCharCode(10);
+const KEY = 'salaryman_v1';
+const SCHEMA = 1;
+let S = null;
+let TAB = 'main';
+
+function emptySkills() {
+  const o = {};
+  TREE.forEach(c => c.구간.forEach(g => g.nodes.forEach(n => o[n.id] = 0)));
+  return o;
+}
+
+function newRun(carrySp, dex) {
+  return {
+    v: SCHEMA,
+    m: 100, h: 100, work: 0, money: CFG.시작금,
+    day: 1, dow: 1, bi: 0,
+    warn: 0, wm: 0, wh: 0, wk: 0, wmoney: 0,
+    items: { 약: 0, 담배: 0, AI: 0, 시간멈추기: 0, 복권: 0, 부적: 0 },
+    card: 0,
+    sp: carrySp, earned: 0, bank: carrySp,
+    skills: emptySkills(),
+    dex: dex || {},
+    log: [],
+    phase: 'play', ev: null,
+    late: false, skipEvening: false,
+    lastDelta: null,
+    over: null,
+  };
+}
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (o.v !== SCHEMA) return null;
+    return o;
+  } catch (e) { return null; }
+}
+
+function log(t, b) {
+  S.log.unshift({ t: '[D' + S.day + '] ' + t, b: !!b });
+  if (S.log.length > 60) S.log.pop();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3. LOGIC  (sim.js 공식 이식)
+   ══════════════════════════════════════════════════════════════ */
+const sk = id => S.skills[id] || 0;
+
+const rank = () => {
+  const d = S.day;
+  if (d > CFG.승진일[3]) return 3;
+  if (d > CFG.승진일[2]) return 2;
+  if (d > CFG.승진일[1]) return 1;
+  return 0;
+};
+const 직급 = () => CFG.직급[rank()];
+
+const M = {
+  처리량:      () => CFG.P + sk('일잘러') * 0.9 + (sk('운동하기') + sk('기도하기')) * 0.3,
+  배정배율:    () => 1 - sk('팀원강화') * 0.15,
+  일멘탈배율:  () => 1 - sk('ai사용') * 0.18,
+  건강배율:    () => 1 - sk('짬처리') * 0.18,
+  야근배율:    () => 1 - sk('칼퇴문화') * 0.30,
+  부업멘탈배율:() => 1 - sk('MZ사원') * 0.15,
+  부업수입:    () => 1 + sk('재빠른손') * 0.20 + sk('SNS개설') * 0.50,
+  알바수입:    () => 1 + sk('재빠른손') * 0.20 + sk('알바n잡') * 0.25,
+  발각방어:    () => [0, .5, .75, 1][sk('사생활 보호 모니터')] || 0,
+  지각방어:    () => [0, .34, .67, 1][sk('달리기')] || 0,
+  취침배율:    () => 1 + sk('규칙적인 생활') * 0.30,
+  주말배율:    () => 1 + sk('주말은 쉬는 날') * 0.40,
+  저녁배율:    () => 1 + sk('일기쓰기') * 0.25,
+  운동배율:    () => 1 + sk('운동하기') * 0.30,
+  아침멘탈:    () => sk('기도하기') * 6,
+  월급배율:    () => 1 + sk('사내정치') * .25 + sk('임원진급') * .5
+                       + sk('팀원강화') * .15 + sk('일대신해줌') * .08,
+  월세배율:    () => 1 - sk('무지출챌린지') * 0.30,
+  카드최대:    () => sk('일대신해줌'),
+  아이템효과:  () => CFG.아이템회복 * (1 + sk('약·담배 효율') * 0.3),
+  상점할인:    () => 1 - sk('단골') * 0.15,
+  피로:        () => 1 + S.day * CFG.피로계수,
+  운보정:      () => S.items.부적 > 0 ? 0.5 : 1,   // 부적: 지각·발각 확률 반감
+  배정량:      () => CFG.배정[rank()] * M.배정배율() * (1 + S.day * CFG.배정증가),
+};
+
+// 해금 판정 — 계열 SP / 전체 SP / 스킬+상태
+function 계열SP(name) {
+  const c = TREE.find(x => x.계열 === name);
+  let sum = 0;
+  if (c) c.구간.forEach(g => g.nodes.forEach(n => { if (!n.end) sum += sk(n.id); }));
+  return sum;
+}
+function 전체SP() {
+  let sum = 0;
+  TREE.forEach(c => c.구간.forEach(g => g.nodes.forEach(n => { if (!n.end) sum += sk(n.id); })));
+  return sum;
+}
+function gateOk(c) {
+  if (c.need && sk(c.need) < 1) return false;
+  const g = c.gate;
+  if (!g) return true;
+  if (g.line && 계열SP(g.line) < g.sp) return false;
+  if (g.total && 전체SP() < g.total) return false;
+  if (g.skill && sk(g.skill) < 1) return false;
+  if (g.card && S.card < g.card) return false;
+  return true;
+}
+
+const isWeekend = () => S.dow >= 6;
+const blocks = () => isWeekend() ? 주말블록 : 평일블록;
+const curBlock = () => blocks()[S.bi];
+
+// 현재 블록의 선택지 목록
+function choices() {
+  const b = curBlock();
+  const src = (b === '출근준비') ? CH.출근준비
+            : (b === '오전업무' || b === '오후업무') ? CH.업무
+            : (b === '점심') ? CH.점심
+            : (b === '퇴근') ? CH.퇴근
+            : (b === '저녁') ? CH.저녁
+            : CH.주말;
+  return src.filter(gateOk);
+}
+
+// 선택지의 실제 효과 (표시용 + 적용용)
+function effect(c) {
+  const b = curBlock();
+  const h = BLK[b].h;
+  const three = (b === '오전업무');
+  let m = c.m, hp = c.h, money = c.money || 0, work = c.work || 0;
+  if (c.m3 !== undefined) { m = three ? c.m3 : c.m5; hp = three ? c.h3 : c.h5; }
+  if (c.money3 !== undefined) money = three ? c.money3 : c.money5;
+  if (c.workAll) work = (b === '오전업무' && S.late) ? 1 : h;
+  if (c.workHalf) work = ((b === '오전업무' && S.late) ? 1 : h) / 2;
+
+  // 배율
+  if (m < 0) {
+    if (c.workAll || c.k === '굶고 일하기' || c.k === '자리에서 먹고 일하기') m *= M.일멘탈배율();
+    if (c.sneak || c.k === '부업하기' || c.alba) m *= M.부업멘탈배율();
+    if (c.night) m *= M.야근배율();
+  }
+  if (hp < 0) { hp *= M.건강배율(); if (c.night) hp *= M.야근배율(); }
+  if (m > 0 && b === '저녁') m *= M.저녁배율();
+  if (hp > 0 && c.k === '운동하기') hp *= M.운동배율();
+  if (b.indexOf('주말') === 0) { if (m > 0) m *= M.주말배율(); if (hp > 0) hp *= M.주말배율(); }
+  const fat = M.피로();
+  if (m < 0) m *= fat;
+  if (hp < 0) hp *= fat;
+  if (money > 0) {
+    if (c.sneak || c.k === '부업하기') money *= M.부업수입();
+    if (c.alba) money *= M.알바수입();
+  }
+  // 딴짓 중 처리 (자는척 / 멀티태스킹)
+  let extra = 0;
+  if (c.slack && sk('자는척') > 0) extra = M.처리량() * h * sk('자는척') * 0.15;
+  if (c.sneak && sk('멀티태스킹') > 0) extra = M.처리량() * h * sk('멀티태스킹') * 0.20;
+
+  return { m: Math.round(m), h: Math.round(hp), money: Math.round(money),
+           work: Math.round(work * M.처리량() + extra + (c.workFlat || 0)),
+           card: c.card || 0, cardUse: c.cardUse || 0, q: c.q || '' };
+}
+
+function pick(c) {
+  if (S.phase !== 'play') return;
+  const b = curBlock();
+  const e = effect(c);
+  const d = [];
+
+  if (e.work) { S.work = Math.max(-M.배정량(), S.work - e.work); d.push('업무 -' + e.work); }
+  if (e.m) { S.m = Math.min(100, S.m + e.m); d.push('멘탈 ' + (e.m > 0 ? '+' : '') + e.m); }
+  if (e.h) { S.h = Math.min(100, S.h + e.h); d.push('건강 ' + (e.h > 0 ? '+' : '') + e.h); }
+  if (e.money) { S.money += e.money; d.push('돈 ' + (e.money > 0 ? '+' : '') + won(e.money)); }
+  if (e.card) { S.card = Math.min(M.카드최대(), S.card + e.card); d.push('팀원 카드 +1'); }
+  if (e.cardUse) { S.card = Math.max(0, S.card - e.cardUse); d.push('팀원 카드 -' + e.cardUse); }
+  S.lastDelta = d.join(' · ');
+  log(BLK[b].label + ' — ' + c.k + '. ' + (d.join(' / ') || '변화 없음'));
+
+  if (c.night) S.skipEvening = true;
+
+  // 지각 판정
+  if (c.late && Math.random() < CFG.지각확률 * (1 - M.지각방어()) * M.운보정()) {
+    return openEvent({
+      title: '지각', desc: '너무 개운해져버렸다!! 어떡하지?',
+      opts: [
+        { t: '시간멈추기 사용', need: () => S.items.시간멈추기 > 0,
+          run: () => { S.items.시간멈추기--; log('시간멈추기 사용. 지각 방어.'); } },
+        { t: '지각한다 · 경고 +1',
+          run: () => { S.late = true; log('지각. 오전업무 3h → 1h.', 1); addWarn(null); } },
+      ]
+    });
+  }
+  // 발각 판정
+  if (c.caught && Math.random() < CFG.발각확률 * (1 - M.발각방어()) * M.운보정() * (c.caughtRate || 1)) {
+    S.lastDelta += ' · 발각!';
+    log('00씨 일 안하나! 딴짓 발각. 경고 +1.', 1);
+    addWarn(null);
+    if (S.phase !== 'play') { render(); save(); return; }
+    return openEvent({
+      title: '발각',
+      desc: '"00씨 일 안하나!"' + SEP + SEP + '딴짓하다 걸렸습니다.' + SEP
+          + '경고 +1  (' + S.warn + ' / ' + CFG.총경고임계 + ')',
+      opts: [{ t: '...죄송합니다', run: function () {} }]
+    });
+  }
+  afterAction();
+}
+
+// 경고 추가 — g: '멘탈'|'건강'|'업무'|'돈'|null(순손해)
+function addWarn(g) {
+  S.warn++;
+  if (g === '멘탈') { S.wm++; S.m = 100; }
+  if (g === '건강') { S.wh++; S.h = 100; }
+  if (g === '업무') { S.wk++; S.work = 0; }
+  if (g === '돈') { S.wmoney++; }
+  const cnt = g === '멘탈' ? S.wm : g === '건강' ? S.wh : g === '업무' ? S.wk : g === '돈' ? S.wmoney : 0;
+  const lim = g === '돈' ? CFG.월세임계 : CFG.게이지임계;
+  if (g && cnt >= lim) {
+    return badEnd({ 멘탈: '퇴사', 건강: '아사', 업무: '짤림', 돈: '백수' }[g]);
+  }
+  if (S.warn >= CFG.총경고임계) return badEnd('짤림');
+}
+
+// 아이템 사용 — 이벤트/상시 공용. 부작용 포함, 제조 스킬로 제거
+function useItem(id) {
+  if (S.items[id] <= 0) return false;
+  S.items[id]--;
+  const amt = Math.round(M.아이템효과());
+  if (id === '약') {
+    S.h = Math.min(100, S.h + amt);
+    const side = sk('약 제조') > 0 ? 0 : 10;
+    S.m -= side;
+    log('약 사용. 건강 +' + amt + (side ? ' / 멘탈 -' + side : ' (부작용 없음)') + '.');
+  } else if (id === '담배') {
+    S.m = Math.min(100, S.m + amt);
+    const side = sk('담배 제조') > 0 ? 0 : 10;
+    S.h -= side;
+    log('담배 사용. 멘탈 +' + amt + (side ? ' / 건강 -' + side : ' (부작용 없음)') + '.');
+  } else if (id === '복권') {
+    const luck = S.items.부적 > 0;          // 부적: 소액 당첨률 상향 (대박률은 그대로)
+    const r = Math.random();
+    const win = r < 0.03 ? 500000 : r < (luck ? 0.25 : 0.18) ? 40000 : 0;
+    S.money += win;
+    log('복권 ' + (win ? '당첨! +' + won(win) : '꽝.'), !win);
+  } else if (id === 'AI') {
+    const cut = 40;
+    S.work = Math.max(-M.배정량(), S.work - cut);
+    log('AI 사용. 업무 -' + cut + '. 누적 ' + Math.round(S.work) + '.');
+  }
+  return true;
+}
+
+function checkGauges() {
+  if (S.phase !== 'play') return;
+  if (S.m <= 0) {
+    return openEvent({
+      title: '멘탈 갈림', desc: '회사생활이 너무 고통스럽다..',
+      opts: [
+        { t: '담배 피기', need: () => S.items.담배 > 0,
+          run: () => { useItem('담배'); } },
+        { t: '버틴다 · 경고 +1  「' + 경고대사.멘탈[Math.min(S.wm, 2)] + '」',
+          run: () => { log('팀장님 상담. 멘탈 강제회복. 경고 +1.', 1); addWarn('멘탈'); } },
+      ]
+    });
+  }
+  if (S.h <= 0) {
+    return openEvent({
+      title: '건강 악화', desc: '갑자기 눈이 아프고 숨이 안쉬어진다...',
+      opts: [
+        { t: '약 먹기', need: () => S.items.약 > 0,
+          run: () => { useItem('약'); } },
+        { t: '버틴다 · 경고 +1  「' + 경고대사.건강[Math.min(S.wh, 2)] + '」',
+          run: () => { log('병원 다녀옴. 건강 강제회복. 경고 +1.', 1); addWarn('건강'); } },
+      ]
+    });
+  }
+}
+
+// 블록 진행
+function afterAction() {
+  checkGauges();
+  if (S.phase !== 'play') return;
+  advance();
+}
+
+function advance() {
+  const bs = blocks();
+  S.bi++;
+  // 야근이면 저녁 스킵
+  if (!isWeekend() && S.skipEvening && bs[S.bi] === '저녁') S.bi++;
+  if (S.bi >= bs.length) return endDay();
+  // 퇴근 블록 진입 시 업무 판정
+  if (curBlock() === '퇴근' && S.work > 100) return workEvent();
+  render();
+  save();
+}
+
+function workEvent() {
+  const opts = [
+    { t: '야근한다 (18~23 · 저녁 소멸)',
+      run: () => { pickDirect(CH.퇴근[1]); } },
+  ];
+  if (S.card > 0) opts.push({
+    t: '팀원에게 부탁 [' + S.card + ']',
+    run: () => { S.card--; S.work = Math.max(0, S.work - 60);
+                 log('팀원에게 부탁. 업무 -60. 카드 -1.'); pickDirect(CH.퇴근[0]); } });
+  opts.push({
+    t: '그냥 집간다 · 경고 +1  「' + 경고대사.업무[Math.min(S.wk, 2)] + '」',
+    run: () => { log('밤에 결국 노트북 켬. 업무 강제회복. 경고 +1.', 1);
+                 addWarn('업무'); if (S.phase === 'play') pickDirect(CH.퇴근[0]); } });
+  openEvent({ title: '업무 밀림', desc: '해도해도 일이 줄어들지 않는다...', opts: opts });
+}
+
+// 이벤트 안에서 퇴근 선택을 확정
+function pickDirect(c) {
+  const e = effect(c);
+  if (e.work) S.work = Math.max(-M.배정량(), S.work - e.work);
+  if (e.m) S.m = Math.min(100, S.m + e.m);
+  if (e.h) S.h = Math.min(100, S.h + e.h);
+  if (c.night) S.skipEvening = true;
+  log(BLK['퇴근'].label + ' — ' + c.k + '.');
+}
+
+function endDay() {
+  // 취침
+  S.m = Math.min(100, S.m + CFG.취침M * M.취침배율());
+  S.h = Math.min(100, S.h + CFG.취침H * M.취침배율());
+  S.earned += CFG.SP율; S.sp += CFG.SP율;
+  const sl = SLEEP[Math.floor(Math.random() * SLEEP.length)];
+  S.lastDelta = sl;
+  log(sl + '  멘탈 +' + Math.round(CFG.취침M * M.취침배율())
+      + ' / 건강 +' + Math.round(CFG.취침H * M.취침배율()) + ' / SP +' + CFG.SP율);
+
+  const before = rank();
+  S.day++; S.dow = S.dow === 7 ? 1 : S.dow + 1;
+  S.bi = 0; S.late = false; S.skipEvening = false;
+  if (rank() !== before) {
+    log('승진. ' + 직급() + '. 배정량 증가. 월급은 그대로.', 1);
+    return openEvent({
+      title: '승진',
+      desc: '오늘부터 ' + 직급() + '입니다.' + SEP + SEP
+          + '"회사가 힘들어서 월급은 못올려줘...' + SEP + '이해해줘ㅎㅎ"' + SEP + SEP
+          + '하루 업무 배정량이 늘어납니다.',
+      opts: [{ t: '...네', run: function () {} }]
+    });
+  }
+  dayStart();
+}
+
+function dayStart() {
+  if (S.dow === 6) return settle();   // 토요일 정산
+  if (S.dow <= 5) return morning();
+  render(); save();                    // 일요일
+}
+
+function morning() {
+  S.m = Math.min(100, S.m + M.아침멘탈());
+  const a = Math.round(M.배정량());
+  S.work += a;
+  log('금일 업무 배정 +' + a + '. 누적 ' + Math.round(S.work) + '.');
+  checkGauges();
+  if (S.phase === 'play') { render(); save(); }
+}
+
+function settle() {
+  const pay = Math.round(CFG.주급 * M.월급배율());
+  S.money += pay;
+  const rent = Math.round(CFG.월세 * M.월세배율());
+  log('월급 입금 +' + won(pay) + '.');
+  // 제조 자동생성
+  const 약제 = sk('약 제조'), 담제 = sk('담배 제조'), dw = sk('다크웹 탐색');
+  if (약제) { S.items.약 += 약제 + dw; log('약 제조 ' + (약제 + dw) + '개.'); }
+  if (담제) { S.items.담배 += 담제; log('담배 제조 ' + 담제 + '개.'); }
+  // 판매 수입
+  const 단가 = 12000 * (1 + sk('거래처 확보'));
+  const 판매 = sk('약 판매') + sk('담배 판매');
+  if (판매) { const g = Math.round(단가 * 판매); S.money += g; log('제품 판매 +' + won(g) + '.'); }
+
+  if (S.money >= rent) {
+    S.money -= rent;
+    log('월세 출금 -' + won(rent) + '. 잔액 ' + won(S.money) + '.');
+    const lines = ['월급 ' + won(pay) + ' 입금!', ''];
+    if (판매) lines.push('제품 판매   +' + won(Math.round(단가 * 판매)));
+    if (약제) lines.push('약 제조      ' + (약제 + dw) + '개');
+    if (담제) lines.push('담배 제조    ' + 담제 + '개');
+    lines.push('월세        -' + won(rent));
+    lines.push('');
+    lines.push('잔액        ' + won(S.money));
+    openEvent({ title: '월급날', desc: lines.join(SEP),
+                opts: [{ t: '확인', run: function () {} }] });
+    return;
+  } else {
+    const opts = [];
+    if (S.items.복권 > 0) opts.push({ t: '복권 긁기 [' + S.items.복권 + ']',
+      run: () => {
+        S.items.복권--;
+        const r = Math.random();
+        const win = r < 0.03 ? 500000 : r < 0.18 ? 40000 : 0;
+        S.money += win;
+        log('복권 결과 ' + (win ? '+' + won(win) : '꽝') + '.', !win);
+        if (S.money >= rent) { S.money -= rent; log('월세 납부. 경고 없음.'); }
+        else { log('월세 미납. 경고 +1.', 1); addWarn('돈'); }
+      }});
+    opts.push({ t: '못 낸다 · 경고 +1  「' + 경고대사.돈[Math.min(S.wmoney, 1)] + '」',
+      run: () => { log('월세 미납. 경고 +1.', 1); addWarn('돈'); } });
+    openEvent({ title: '월세 밀림', desc: '똑똑똑 월세내세용\n네 돈이없다구요??\n\n월세 ' + won(rent)
+                                          + ' / 소지금 ' + won(S.money), opts: opts });
+  }
+}
+
+/* ── 엔딩 ── */
+function badEnd(name) {
+  S.phase = 'ending';
+  S.over = { kind: 'bad', name: name };
+  S.dex[name] = true;
+  log('배드엔딩 — ' + name + '.', 1);
+  render(); save();
+}
+
+// 트리 완주 여부
+function treeDone(treeName) {
+  let ok = true;
+  TREE.forEach(c => c.구간.forEach(g => {
+    if (g.tree === treeName || (g.nm === '기본' && c.구간.some(x => x.tree === treeName))) {
+      g.nodes.forEach(n => { if (n.end) return; if (sk(n.id) < n.max) ok = false; });
+    }
+  }));
+  return ok;
+}
+// 자기관리 서브 분기점 통과 여부
+function subBranch() {
+  const 운동 = ['운동하기', '달리기', '헬창'].some(id => sk(id) > 0);
+  const 기도 = ['기도하기', '일기쓰기', '주말 예배'].some(id => sk(id) > 0);
+  const sumA = sk('운동하기') + sk('달리기') + sk('헬창');
+  const sumB = sk('기도하기') + sk('일기쓰기') + sk('주말 예배');
+  if (운동 && 기도) return sumA >= sumB ? '운동' : '기도';
+  if (운동) return '운동';
+  if (기도) return '기도';
+  return null;
+}
+
+function fireEnding(node, treeName) {
+  const sub = subBranch();
+  let name = node.end;
+  if (sub && treeName !== '운동' && treeName !== '기도') {
+    const c = COMBO[treeName + '|' + sub];
+    if (c) name = c;
+  }
+  S.phase = 'ending';
+  S.over = { kind: 'good', name: name };
+  S.dex[name] = true;
+  log('엔딩 — ' + name + '.', 1);
+  render(); save();
+}
+
+function buyEstate() {
+  if (S.money < CFG.부동산가) return;
+  S.money -= CFG.부동산가;
+  S.phase = 'ending';
+  S.over = { kind: 'good', name: '건물주' };
+  S.dex['건물주'] = true;
+  log('부동산 구매. 건물주 엔딩.', 1);
+  render(); save();
+}
+
+function restart(keepSp) {
+  const dex = S.dex;
+  const carry = keepSp ? Math.floor(S.bank + S.earned) : 0;
+  S = newRun(carry, dex);
+  log('입사. 기수 시작. 보유 SP ' + carry + '.');
+  morning();
+  TAB = 'main'; render(); save();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4. RENDER
+   ══════════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+const won = n => Math.round(n).toLocaleString() + '원';
+const 요일 = ['', '월', '화', '수', '목', '금', '토', '일'];
+
+function gauge(nm, v, max, danger, over) {
+  const pct = Math.max(0, Math.min(100, v / max * 100));
+  return '<div class="g"><span class="nm">' + nm + '</span>'
+    + '<span class="track"><span class="fill' + (danger ? ' warn' : '') + '" style="width:' + pct + '%"></span></span>'
+    + '<span class="val">' + Math.max(0, Math.round(v)) + ' / ' + max
+    + (over ? ' <span class="over">+' + over + '</span>' : '') + '</span></div>';
+}
+
+function renderBar() {
+  const over = S.work > 100 ? Math.round(S.work - 100) : 0;
+  let dots = '';
+  for (let i = 0; i < CFG.총경고임계; i++) dots += (i < S.warn ? '●' : '○');
+  $('bar').innerHTML =
+    '<div class="row1"><span>D' + S.day + ' ' + 요일[S.dow] + '요일 · ' + 직급() + '</span>'
+    + '<span>' + won(S.money) + '</span></div>'
+    + gauge('멘탈', S.m, 100, S.m <= 25)
+    + gauge('건강', S.h, 100, S.h <= 25)
+    + gauge('업무', Math.min(S.work, 100), 100, S.work > 80, over)
+    + '<div id="warnrow">경고 ' + dots + '  <span style="letter-spacing:0">(' + S.warn + '/' + CFG.총경고임계
+    + ')  퇴사' + S.wm + ' 아사' + S.wh + ' 백수' + S.wmoney + ' 짤림' + S.wk
+    + (M.카드최대() ? '  팀원카드 ' + S.card + '/' + M.카드최대() : '') + '</span></div>';
+}
+
+function renderMain() {
+  const b = curBlock();
+  let h = '<div class="clock">' + BLK[b].t + '</div>'
+        + '<div class="blockname">' + BLK[b].label + ' (' + BLK[b].h + '시간)'
+        + (S.late && b === '오전업무' ? ' · 지각으로 1시간' : '') + '</div>'
+        + '<div class="delta">' + (S.lastDelta ? esc(S.lastDelta) : '&nbsp;') + '</div>'
+        + '<div class="cards">';
+  choices().forEach((c, i) => {
+    const e = effect(c);
+    const lines = [];
+    if (e.work) lines.push('업무 -' + e.work);
+    if (e.m) lines.push('멘탈 ' + (e.m > 0 ? '+' : '') + e.m);
+    if (e.h) lines.push('건강 ' + (e.h > 0 ? '+' : '') + e.h);
+    if (e.money) lines.push('돈 ' + (e.money > 0 ? '+' : '') + won(e.money));
+    if (e.card) lines.push('팀원 카드 +1');
+    if (e.cardUse) lines.push('팀원 카드 -' + e.cardUse);
+    let risk = '';
+    if (c.late) risk = '⚠ 지각 ' + Math.round(CFG.지각확률 * (1 - M.지각방어()) * M.운보정() * 100) + '%';
+    if (c.caught) risk = '⚠ 발각 ' + Math.round(CFG.발각확률 * (1 - M.발각방어()) * M.운보정() * (c.caughtRate || 1) * 100) + '%';
+    if (c.night) risk = '저녁 블록 소멸';
+    if (risk) lines.push(risk);
+    if (c.q) lines.push('"' + c.q + '"');
+    const tip = esc(lines.join(SEP) || '변화 없음').replace(/"/g, '&quot;');
+    h += '<button class="card" data-ci="' + i + '" data-tip="' + tip + '">'
+       + esc(c.k) + '</button>';
+  });
+  h += '</div>';
+  h += '<div id="log">' + S.log.map(l => '<div' + (l.b ? ' class="b"' : '') + '>' + esc(l.t) + '</div>').join('') + '</div>';
+  return h;
+}
+
+function renderStatus() {
+  const a = Math.round(M.배정량());
+  const cap = Math.round(M.처리량() * 8);
+  return '<h3>근무</h3><table>'
+    + row('직급', 직급() + ' (D' + S.day + ')')
+    + row('금일 배정량', a)
+    + row('정규시간 처리 가능', cap + ' (오전3h+오후5h × P ' + M.처리량().toFixed(1) + ')')
+    + row('부족분', (a - cap > 0 ? '+' + Math.round(a - cap) + ' → 야근·이월 필요' : '여유'))
+    + row('밀린 업무', Math.round(S.work) + (S.work > 100 ? ' (초과 ' + Math.round(S.work - 100) + ')' : ''))
+    + '</table>'
+    + '<h3>경고</h3><table>'
+    + row('총 경고', S.warn + ' / ' + CFG.총경고임계)
+    + row('멘탈(퇴사)', S.wm + ' / ' + CFG.게이지임계)
+    + row('건강(아사)', S.wh + ' / ' + CFG.게이지임계)
+    + row('업무(짤림)', S.wk + ' / ' + CFG.게이지임계)
+    + row('월세(백수)', S.wmoney + ' / ' + CFG.월세임계)
+    + '</table>'
+    + '<h3>자원</h3><table>'
+    + row('소지금', won(S.money))
+    + row('주급 / 월세', won(CFG.주급 * M.월급배율()) + ' / ' + won(CFG.월세 * M.월세배율()))
+    + row('팀원 카드', S.card + ' / ' + M.카드최대())
+    + row('보유 SP', S.sp + '  (이번 회차 획득 ' + S.earned + ')')
+    + '</table>'
+    + '<h3>적용 중인 효과</h3><table>'
+    + row('처리량 P', M.처리량().toFixed(2))
+    + row('피로 계수', '×' + M.피로().toFixed(3))
+    + row('취침 회복', '멘탈 +' + Math.round(CFG.취침M * M.취침배율())
+                     + ' / 건강 +' + Math.round(CFG.취침H * M.취침배율()))
+    + row('지각 방어', Math.round(M.지각방어() * 100) + '%')
+    + row('발각 방어', Math.round(M.발각방어() * 100) + '%')
+    + '</table>';
+}
+const row = (a, b) => '<tr><th style="width:45%">' + a + '</th><td class="n">' + b + '</td></tr>';
+
+function renderItems() {
+  let h = '<h3>보유 아이템</h3><div class="grid4">';
+  ['약', '담배', 'AI', '시간멈추기', '복권', '부적'].forEach(id => {
+    const n = S.items[id];
+    const 상시 = (id !== '시간멈추기' && id !== '부적');
+    const ok = n > 0 && 상시 && S.phase === 'play';
+    const lbl = id === '부적' ? (n > 0 ? '보유중' : '미보유') : (상시 ? '사용' : '이벤트');
+    h += '<div class="slot"><span class="cnt">' + n + '</span>' + id
+       + '<button data-use="' + id + '"' + (ok ? '' : ' disabled') + '>' + lbl + '</button></div>';
+  });
+  h += '</div><p style="font-size:12px;margin-top:10px;color:#333">'
+     + '약·담배·복권은 <b>아무 때나</b> 쓸 수 있습니다. 이벤트가 떴을 때도 쓸 수 있습니다.<br>'
+     + '시간멈추기는 지각 이벤트에서만 사용합니다.</p>'
+     + '<h3>아이템 효과</h3><table>'
+     + row('약', '건강 +' + Math.round(M.아이템효과()) + (sk('약 제조') ? '  (부작용 없음)' : ' · 멘탈 -10'))
+     + row('담배', '멘탈 +' + Math.round(M.아이템효과()) + (sk('담배 제조') ? '  (부작용 없음)' : ' · 건강 -10'))
+     + row('AI', '업무 -40')
+     + row('시간멈추기', '지각 방어 100%')
+     + row('복권', S.items.부적 > 0 ? '꽝 75% / 4만원 22% / 50만원 3%  (부적 적용)'
+                                    : '꽝 82% / 4만원 15% / 50만원 3%')
+     + row('부적', '지각·발각 확률 절반 · 복권 소액 당첨률 상향' + (S.items.부적 > 0 ? '  (적용 중)' : ''))
+     + '</table>';
+  return h;
+}
+
+// 판매가 = 원가 x (0.5 + 판매스킬 x 0.1)
+function sellPrice(id) {
+  const base = SHOP.find(x => x.id === id).price;
+  const lv = id === '약' ? sk('약 판매') : sk('담배 판매');
+  return Math.round(base * (0.5 + lv * 0.1));
+}
+
+function renderShop() {
+  if (!isWeekend()) return '<h3>상점</h3><p>상점은 <b>주말에만</b> 열립니다.<br>토요일 정산(월급 → 월세) 후 이용할 수 있습니다.</p>';
+  let h = '<h3>상점 <span style="float:right;font-weight:normal">소지금 ' + won(S.money) + '</span></h3><div class="grid4">';
+  SHOP.forEach((it) => {
+    if (it.id === '부동산') return;
+    const p = Math.round(it.price * M.상점할인());
+    const 보유 = S.items[it.id] || 0;
+    const 막힘 = S.money < p || (it.once && 보유 > 0);
+    const 팔수있음 = (it.id === '약' || it.id === '담배');
+    h += '<div class="slot"><span class="cnt">' + 보유 + '</span>' + it.id
+       + '<div class="pr">' + p.toLocaleString()
+       + (팔수있음 ? ' / ' + sellPrice(it.id).toLocaleString() : '') + '</div>'
+       + '<div class="btns"><button data-buy="' + it.id + '"' + (막힘 ? ' disabled' : '') + '>'
+       + (it.once && 보유 > 0 ? '보유' : '구입') + '</button>'
+       + (팔수있음 ? '<button data-sell="' + it.id + '"' + (보유 > 0 ? '' : ' disabled')
+                    + '>판매</button>' : '')
+       + '</div></div>';
+  });
+  h += '<p style="font-size:11.5px;color:#333;margin-top:8px">'
+     + 'AI 업무 -40 · 부적 지각/발각 반감 + 복권 소액당첨률↑ (비소모성, 1개만)</p>';
+  h += '</div>';
+  const ep = CFG.부동산가;
+  h += '<h3>부동산</h3><div class="slot" style="text-align:left">'
+     + '구매 즉시 <b>건물주 엔딩</b>. 다니던 직장이 이 건물에 들어옵니다.<div class="pr">'
+     + ep.toLocaleString() + '원</div>'
+     + '<button data-estate="1"' + (S.money < ep ? ' disabled' : '') + '>구입</button></div>';
+  return h;
+}
+
+function renderSkill() {
+  let h = '<h3>스킬 <span style="float:right;font-weight:normal">보유 SP ' + S.sp + '</span></h3>'
+        + '<p style="font-size:12px;color:#333;margin-bottom:10px">'
+        + '1~3 레벨은 전부 올려야 다음 노드가 열립니다. 매 회차 다시 찍습니다.</p>';
+  TREE.forEach(c => {
+    h += '<div class="tree"><div class="hd">' + c.계열 + '  <span style="font-weight:normal;font-size:12px">— ' + c.축 + '</span></div>';
+    c.구간.forEach(g => {
+      h += '<div style="font-size:12px;margin:6px 0 3px">' + g.nm + '</div>';
+      let prevDone = true;
+      g.nodes.forEach((n, idx) => {
+        const lv = sk(n.id);
+        const 기본완료 = c.구간[0].nodes.every(x => sk(x.id) >= x.max);
+        const unlocked = (g.nm === '기본') ? prevDone : (기본완료 && prevDone);
+        const 트리ok = n.end ? treeDone(g.tree) : true;
+        const 돈ok  = n.end ? S.money >= CFG.엔딩돈 : true;
+        const can = n.end ? (unlocked && lv < n.max && 트리ok && 돈ok)      // 엔딩은 SP 불필요
+                          : (unlocked && lv < n.max && S.sp >= 1);
+        h += '<div class="node' + (unlocked ? '' : ' locked') + (lv >= n.max ? ' maxed' : '')
+           + (n.end ? ' endnode' : '') + '">'
+           + '<div class="info"><b>' + esc(n.id) + '</b> — ' + esc(n.d)
+           + (n.q ? '<div class="q">"' + esc(n.q) + '"</div>' : '')
+           + (n.end ? '<div class="q">조건: 트리 완주 ' + (트리ok ? 'O' : 'X')
+                      + ' · 돈 ' + won(S.money) + ' / ' + won(CFG.엔딩돈)
+                      + ' ' + (돈ok ? 'O' : 'X') + '  (SP 불필요)</div>' : '')
+           + '</div>'
+           + '<div class="lv">' + (n.max > 1 ? lv + '/' + n.max : (lv ? '완료' : '-')) + '</div>'
+           + '<button data-sk="' + esc(n.id) + '" data-tree="' + (g.tree || '') + '"'
+           + (can ? '' : ' disabled') + '>' + (unlocked && n.end ? '엔딩' : '+1') + '</button></div>';
+        prevDone = prevDone && lv >= n.max;
+      });
+    });
+    h += '</div>';
+  });
+  return h;
+}
+
+function renderDex() {
+  const got = DEX_ALL.filter(d => S.dex[d]).length;
+  let h = '<h3>엔딩 도감 <span style="float:right;font-weight:normal">' + got + ' / ' + DEX_ALL.length + '</span></h3>';
+  if (got >= DEX_ALL.length) h += '<p class="big">도감 완성</p>';
+  h += '<div class="dex">';
+  DEX_ALL.forEach(d => {
+    h += '<div class="dexit' + (S.dex[d] ? '' : ' no') + '">' + (S.dex[d] ? esc(d) : '???') + '</div>';
+  });
+  h += '</div>';
+  return h;
+}
+
+function renderSet() {
+  return '<h3>설정</h3><table>'
+    + row('스키마', 'v' + SCHEMA)
+    + row('저장', 'localStorage / ' + KEY)
+    + '</table><div class="btnrow"><button data-reset="1">데이터 초기화</button></div>'
+    + '<h3>수치</h3><table>'
+    + row('P (시간당 처리량)', CFG.P)
+    + row('배정량', CFG.배정.join(' / ') + ' × (1 + 근속일 × ' + CFG.배정증가 + ')')
+    + row('피로 계수', '소모 × (1 + 근속일 × ' + CFG.피로계수 + ')')
+    + row('취침 회복', '멘탈 +' + CFG.취침M + ' / 건강 +' + CFG.취침H)
+    + row('주급 / 월세', won(CFG.주급) + ' / ' + won(CFG.월세))
+    + row('SP 획득', CFG.SP율 + ' / 일')
+    + '</table>';
+}
+
+function renderEnding() {
+  const o = S.over;
+  if (o.kind === 'bad') {
+    return '<div class="big">' + esc(o.name) + '</div>'
+      + '<div class="sub">"안녕 나는 직장인이었던 유령인데 ' + esc(o.name) + '여서 죽었어.\n'
+      + '다시 직장생활을 하면 잘 할 수 있을 것 같아.\n한번 더 도전해보고싶어."</div>'
+      + '<table>' + row('생존', 'D' + S.day) + row('이번 회차 획득 SP', S.earned)
+      + row('환생 시 보유 SP', Math.floor(S.bank + S.earned)) + '</table>'
+      + '<div class="btnrow"><button data-re="1">환생하기</button>'
+      + '<button data-re="0">처음부터하기</button></div>';
+  }
+  return '<div class="big">' + esc(o.name) + '</div>'
+    + '<div class="sub">엔딩 달성. 이 인생은 완주되었습니다.\nSP 는 이월되지 않습니다.</div>'
+    + '<table>' + row('생존', 'D' + S.day) + row('소지금', won(S.money)) + '</table>'
+    + '<div class="btnrow"><button data-re="0">새 인생 시작</button></div>';
+}
+
+function renderTabs() {
+  const list = [['main', '상태판'], ['item', '아이템'], ['skill', '스킬'], ['dex', '도감'], ['set', '설정']];
+  if (isWeekend()) list.splice(1, 0, ['shop', '상점']);
+  $('tabs').innerHTML = list.map(([k, n]) =>
+    '<button data-tab="' + k + '"' + (TAB === k ? ' class="on"' : '') + '>' + n + '</button>').join('');
+}
+
+function render() {
+  if (!S) return;
+  renderBar();
+  let body;
+  if (S.phase === 'ending') body = renderEnding();
+  else if (TAB === 'main') body = renderMain();
+  else if (TAB === 'status') body = renderStatus();
+  else if (TAB === 'item') body = renderItems();
+  else if (TAB === 'shop') body = renderShop();
+  else if (TAB === 'skill') body = renderSkill();
+  else if (TAB === 'dex') body = renderDex();
+  else body = renderSet();
+  if (TAB === 'main' && S.phase !== 'ending') body = renderStatusLink() + body;
+  $('screen').innerHTML = body;
+  renderTabs();
+  $('tabnote').style.display = S.phase === 'ending' ? 'none' : '';
+}
+const renderStatusLink = () => '';
+
+/* ── 이벤트 팝업 ── */
+function openEvent(ev) {
+  S.phase = 'event'; S.ev = ev;
+  let h = '<h2>' + esc(ev.title) + '</h2><div class="desc">' + esc(ev.desc) + '</div><div class="opts">';
+  ev.opts.forEach((o, i) => {
+    const ok = !o.need || o.need();
+    h += '<button data-ev="' + i + '"' + (ok ? '' : ' disabled') + '>' + esc(o.t) + '</button>';
+  });
+  h += '</div>';
+  $('pop').innerHTML = h;
+  $('overlay').classList.add('on');
+  renderBar();
+}
+function closeEvent() { $('overlay').classList.remove('on'); S.ev = null; }
+
+/* ══════════════════════════════════════════════════════════════
+   5. EVENTS
+   ══════════════════════════════════════════════════════════════ */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+
+  if (t.dataset.tab) { TAB = t.dataset.tab; render(); return; }
+  if (t.dataset.ci !== undefined) { pick(choices()[+t.dataset.ci]); return; }
+
+  if (t.dataset.ev !== undefined) {
+    const ev = S.ev, i = +t.dataset.ev;
+    if (!ev || !ev.opts || !ev.opts[i]) { closeEvent(); render(); return; }  // 중복 클릭 방어
+    closeEvent(); S.phase = 'play';
+    ev.opts[i].run();
+    if (S.phase === 'play') {
+      // 이벤트 종류에 따라 진행
+      if (ev.title === '승진') { dayStart(); }
+      else if (ev.title === '월세 밀림' || ev.title === '월급날') { render(); save(); }
+      else if (ev.title === '업무 밀림') { advance(); }
+      else afterAction();
+    } else { render(); save(); }
+    return;
+  }
+
+  if (t.dataset.use) {
+    const id = t.dataset.use;
+    if (S.phase !== 'play' || id === '시간멈추기' || id === '부적') return;
+    if (!useItem(id)) return;
+    checkGauges();
+    if (S.phase === 'play') { render(); save(); }
+    return;
+  }
+
+  if (t.dataset.buy) {
+    const it = SHOP.find(x => x.id === t.dataset.buy);
+    const p = Math.round(it.price * M.상점할인());
+    if (it.once && (S.items[it.id] || 0) > 0) return;
+    if (S.money >= p) { S.money -= p; S.items[it.id]++; log(it.id + ' 구입 -' + won(p) + '.'); render(); save(); }
+    return;
+  }
+  if (t.dataset.sell) {
+    const id = t.dataset.sell;
+    if ((S.items[id] || 0) <= 0) return;
+    const g = sellPrice(id);
+    S.items[id]--; S.money += g;
+    log(id + ' 판매 +' + won(g) + '. 잔여 ' + S.items[id] + '개.');
+    render(); save();
+    return;
+  }
+
+  if (t.dataset.estate) { buyEstate(); return; }
+
+  if (t.dataset.sk) {
+    const id = t.dataset.sk, tree = t.dataset.tree;
+    let node = null;
+    TREE.forEach(c => c.구간.forEach(g => g.nodes.forEach(n => { if (n.id === id) node = n; })));
+    if (!node) return;
+    if (!node.end && S.sp < 1) return;
+    if (node.end) { S.skills[id] = 1; fireEnding(node, tree); return; }
+    S.sp -= 1; S.skills[id]++;
+    log('스킬 ' + id + ' Lv' + S.skills[id] + '.');
+    render(); save();
+    return;
+  }
+
+  if (t.dataset.re !== undefined) { restart(t.dataset.re === '1'); return; }
+  if (t.dataset.reset) {
+    if (confirm('저장 데이터를 전부 지웁니다.')) {
+      localStorage.removeItem(KEY); S = newRun(0, {}); log('입사. 기수 시작.'); morning();
+      TAB = 'main'; render(); save();
+    }
+    return;
+  }
+});
+
+/* ── 디버그 훅 (실측·자동플레이용) ── */
+window.__game = {
+  get state() { return S; },
+  get tab() { return TAB; },
+  set tab(v) { TAB = v; render(); },
+  choices: () => choices(),
+  effect: c => effect(c),
+  reset: () => { localStorage.removeItem(KEY); S = newRun(0, {}); log('입사. 기수 시작.'); morning(); render(); save(); },
+  setSkill: (id, lv) => { S.skills[id] = lv; render(); save(); },
+  giveSp: n => { S.sp += n; render(); save(); },
+  giveMoney: n => { S.money += n; render(); save(); },
+};
+
+/* ── 부팅 ── */
+(function boot() {
+  S = load();
+  if (!S) { S = newRun(0, {}); log('입사. 기수 시작.'); morning(); }
+  else if (S.ev) { S.phase = 'play'; S.ev = null; }
+  render();
+})();
+</script>
+</body>
+</html>
