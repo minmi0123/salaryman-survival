@@ -29,32 +29,37 @@ body{background:#fff;color:#000;font-family:"맑은 고딕","Malgun Gothic",sans
 .clock{text-align:center;margin:14px 0 4px;font-size:40px;font-weight:bold;
        letter-spacing:3px;font-variant-numeric:tabular-nums}
 .blockname{text-align:center;font-size:15px;margin-bottom:10px}
-.delta{text-align:center;font-size:13px;min-height:20px;margin-bottom:8px}
+.delta{text-align:center;font-size:13px;min-height:20px;margin-bottom:8px;white-space:pre-line}
 .delta span{margin:0 5px}
 
 /* ── 선택지 카드 ── */
 .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-.card{border:1.5px solid #000;padding:14px 8px;cursor:pointer;background:#fff;text-align:center;
-      font:inherit;color:inherit;font-weight:bold;font-size:14.5px}
+.card{border:1.5px solid #000;padding:10px 6px;cursor:pointer;background:#fff;text-align:center;
+      font:inherit;color:inherit;font-weight:bold;font-size:14.5px;position:relative;
+      min-height:62px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center}
 .card:active{background:#ddd}
 .card .t{display:block;font-weight:bold}
 .card .e{display:none;font-size:11.5px;color:#333;font-weight:normal;
          margin-top:4px;letter-spacing:-.3px}
 .card .rk{display:none;font-size:11px;font-weight:bold}
 .card:disabled{opacity:.35;cursor:not-allowed}
-.card{position:relative}
+
+/* 미해금 — 흐리게가 아니라 점선 + 회색. 조건 문구가 읽혀야 하므로 */
+.card.lock{opacity:1;cursor:default;border-style:dashed;border-color:#999;color:#888}
+.card.lock .t{font-weight:normal}
+.card.lock .lk{display:block;font-size:11px;font-weight:normal;
+               margin-top:5px;letter-spacing:-.3px;line-height:1.35}
 
 /* 데스크톱(hover 있음) — 제목만 + hover 툴팁 */
 @media (hover:hover){
-  .card:hover{background:#f0f0f0}
+  .card:not(.lock):hover{background:#f0f0f0}
   .card[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;right:0;top:100%;
     z-index:30;background:#000;color:#fff;padding:7px 9px;font-size:11.5px;line-height:1.45;
     white-space:pre-line;border:1px solid #000;text-align:left;pointer-events:none}
 }
 /* 터치기기(hover 없음) — 2줄 고정: 제목+위험 / 수치 */
 @media (hover:none){
-  .card{min-height:60px;display:flex;flex-direction:column;
-        align-items:center;justify-content:center;padding:10px 6px}
   .card .e{display:block}
   .card .rk{display:inline}
 }
@@ -75,6 +80,11 @@ body{background:#fff;color:#000;font-family:"맑은 고딕","Malgun Gothic",sans
      max-height:90vh;overflow-y:auto}
 .pop h2{text-align:center;font-size:19px;margin-bottom:10px}
 .pop .desc{text-align:center;margin-bottom:16px;white-space:pre-line;font-size:14px}
+.pop .popimg{display:block;width:100%;max-width:340px;margin:0 auto 14px;
+             border:1px solid #000;image-rendering:auto}
+.pop .taphint{text-align:center;font-size:11px;color:#666;margin-top:10px}
+button.mini{border:1px solid #000;background:#fff;font:inherit;font-size:11px;
+            padding:2px 8px;margin-left:8px;cursor:pointer}
 .pop .desc.mono{font-family:Consolas,monospace;text-align:left;font-size:13px}
 .pop .opts{display:flex;flex-direction:column;gap:8px}
 .pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer}
@@ -121,10 +131,21 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .dexit{border:1px solid #000;padding:5px 6px}
 .dexit.no{color:#aaa;border-style:dashed}
 
-#log{margin-top:14px;font-size:11.5px;border-top:1px dashed #000;padding-top:6px;
-     max-height:150px;overflow-y:auto}
-#log div{padding:1px 0}
-#log div.b{font-weight:bold}
+/* ── 시작화면 ── */
+#title{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+       padding:24px 18px;text-align:center}
+#title h1{font-size:27px;letter-spacing:-1px;margin-bottom:6px}
+#title .tag{font-size:12.5px;color:#555;margin-bottom:20px}
+#title .titleimg{width:100%;max-width:360px;border:1.5px solid #000;margin-bottom:22px}
+#title .menu{display:flex;flex-direction:column;gap:9px;width:100%;max-width:280px}
+#title .menu button{border:1.5px solid #000;background:#fff;padding:13px;font:inherit;
+                    font-size:15px;font-weight:bold;cursor:pointer}
+#title .menu button:disabled{opacity:.3;cursor:not-allowed}
+#title .menu button .s{display:block;font-size:11px;font-weight:normal;color:#555;margin-top:3px}
+#title .foot{margin-top:20px;font-size:11px;color:#777}
+@media (hover:hover){ #title .menu button:not(:disabled):hover{background:#000;color:#fff} }
+#title .menu button:not(:disabled):active{background:#ddd}
+
 .center{text-align:center}
 .big{font-size:22px;font-weight:bold;text-align:center;margin:18px 0}
 .sub{text-align:center;font-size:13px;margin-bottom:14px;white-space:pre-line}
@@ -240,7 +261,7 @@ const CH = {
     { k: '팀원에게 전화하기', q: '아니 잘 지내나 해서...', m: -10, h: 0, card: 1,
       need: '일대신해줌' },
     { k: '기도하기',   q: '1억 받게 해주세요 아멘', m: +25, h: 0, money: -5000,
-      need: '주말예배' },
+      need: '주말 예배' },
   ],
 };
 
@@ -252,73 +273,81 @@ const SLEEP = ['생명유지중...', '잠자는중...', '미래를 준비하는�
 const TREE = [
   { 계열: '업무관련', 축: '업무 게이지', 구간: [
     { nm: '기본', nodes: [
-      { id: '일잘러',     max: 3, d: '처리량 증가', q: '' },
-      { id: '일대신해줌', max: 3, d: '팀원 카드 최대보유 +1 · 월급 +8%', q: '내가 대신 해줄게! 대신 나중에 나 도와주라' },
+      { id: '일잘러',     max: 6, d: '업무 처리량 증가', q: '' },
+      { id: '일대신해줌', max: 5, d: '팀원 카드 최대보유 +1 · 월급 +8%', q: '내가 대신 해줄게! 대신 나중에 나 도와주라' },
     ]},
     { nm: '사장님 트리 (건강+돈)', tree: '사장님', nodes: [
-      { id: '짬처리',   max: 3, d: '건강소모 -18%', q: '야 너가 좀 대신 일해라' },
-      { id: '사내정치', max: 1, d: '월급 +25%', q: '상무님 덕분입니다~' },
-      { id: '임원진급', max: 1, d: '월급 +50%', q: '제가 회사를 살려보겠습니다' },
+      { id: '짬처리',   max: 6, d: '건강소모 -18%', q: '야 너가 좀 대신 일해라' },
+      { id: '사내정치', max: 2, d: '월급 +25%', q: '상무님 덕분입니다~' },
+      { id: '임원진급', max: 2, d: '월급 +50%', q: '제가 회사를 살려보겠습니다' },
+      { id: '골프 접대', max: 3, d: '주말 회복 +25%/lv', q: '주말에도 일하는 셈이죠~' },
       { id: '하극상',   max: 1, d: '엔딩', q: '매출이 안나는데 자리 좀 비켜주시죠?', end: '하극상' },
     ]},
     { nm: '팀장님 트리 (멘탈+업무)', tree: '팀장님', nodes: [
-      { id: 'ai사용',       max: 3, d: '일하기 멘탈소모 -18%', q: '자동화좀 시켜놔야지' },
-      { id: '팀원강화',     max: 1, d: '배정량 -15% · 월급 +15%', q: '얘들아 힘든일 있으면 말하구' },
-      { id: '칼퇴문화',     max: 1, d: '야근 소모 -30%', q: '다들 일찍 들어가~' },
+      { id: 'ai사용',       max: 6, d: '일하기 멘탈소모 -18%', q: '자동화좀 시켜놔야지' },
+      { id: '팀원강화',     max: 2, d: '배정량 -15% · 월급 +15%', q: '얘들아 힘든일 있으면 말하구' },
+      { id: '칼퇴문화',     max: 2, d: '야근 소모 -30%', q: '다들 일찍 들어가~' },
+      { id: '팀 성과급', max: 3, d: '주말 정산 시 +20,000/lv', q: '이번 분기 우리팀이 1등이래' },
       { id: '연금이나타자', max: 1, d: '엔딩', q: '직장이 최고야...', end: '연금이나타자' },
     ]},
   ]},
   { 계열: '부업알바관련', 축: '돈', 구간: [
     { nm: '기본', nodes: [
-      { id: 'MZ사원',   max: 3, d: '부업·알바 멘탈소모 -15%', q: '회사에서 일을 한다구요??' },
-      { id: '재빠른손', max: 1, d: '부업·알바 수입 +20%', q: '연봉올리는것보다 더 쉬운데용' },
+      { id: 'MZ사원',   max: 6, d: '부업·알바 멘탈소모 -15%', q: '회사에서 일을 한다구요??' },
+      { id: '재빠른손', max: 3, d: '부업·알바 수입 +20%', q: '연봉올리는것보다 더 쉬운데용' },
     ]},
     { nm: '돈많은백수 트리 (알바)', tree: '돈많은백수', nodes: [
-      { id: '알바n잡',            max: 3, d: '알바수입 +25%', q: '' },
-      { id: '자는척',             max: 3, d: '딴짓 중에도 업무 일부 처리', q: '아니구 자는건데요' },
-      { id: '무지출챌린지',       max: 1, d: '월세 -30%', q: '어차피 회사 짤리면 여기 못 살아요' },
+      { id: '알바n잡',            max: 6, d: '알바수입 +25%', q: '' },
+      { id: '자는척',             max: 4, d: '딴짓 중에도 업무 일부 처리', q: '아니구 자는건데요' },
+      { id: '무지출챌린지',       max: 2, d: '월세 -30%', q: '어차피 회사 짤리면 여기 못 살아요' },
+      { id: '알바 요령', max: 3, d: '알바 건강소모 -15%/lv', q: '이제 몸이 알아서 움직여요' },
       { id: '직장인 왜하는데ㅋㅋ', max: 1, d: '엔딩', q: '', end: '직장인 왜하는데ㅋㅋ' },
     ]},
     { nm: '크리에이터 트리 (부업)', tree: '크리에이터', nodes: [
-      { id: '사생활 보호 모니터',  max: 3, d: '발각 방어 50/75/100%', q: '엄... 일하는건가.. 열심히 하게나' },
-      { id: 'SNS개설',            max: 1, d: '부업수입 +50%', q: '좋아요 구독 알람설정까징' },
-      { id: '멀티태스킹',          max: 3, d: '몰래부업 중에도 업무 처리', q: '' },
+      { id: '사생활 보호 모니터',  max: 4, d: '발각 방어 50/75/100%', q: '엄... 일하는건가.. 열심히 하게나' },
+      { id: 'SNS개설',            max: 3, d: '부업수입 +50%', q: '좋아요 구독 알람설정까징' },
+      { id: '멀티태스킹',          max: 5, d: '몰래부업 중에도 업무 처리', q: '' },
+      { id: '팬 응원', max: 3, d: '하루 시작 시 멘탈 +4/lv', q: '오늘도 응원합니다 화이팅!' },
       { id: '이제 이게 본업인데요?', max: 1, d: '엔딩', q: '', end: '이제 이게 본업인데요?' },
     ]},
   ]},
   { 계열: '아이템관련', 축: '경고 예산', 구간: [
     { nm: '기본', nodes: [
-      { id: '약·담배 효율', max: 3, d: '아이템 효과 +30%', q: '이거없으면 어떻게사나' },
-      { id: '단골',        max: 1, d: '상점 가격 -15%', q: '사장님 늘 오던 걸로' },
+      { id: '약·담배 효율', max: 6, d: '아이템 효과 +30%', q: '이거없으면 어떻게사나' },
+      { id: '단골',        max: 3, d: '상점 가격 -15%', q: '사장님 늘 오던 걸로' },
     ]},
     { nm: '검은손 트리 (약·자가조달)', tree: '검은손', nodes: [
-      { id: '약 제조',     max: 3, d: '부작용 제거 · 주말 자동생성', q: '만들어서 먹어야지' },
-      { id: '약 판매',     max: 3, d: '주말 판매 수입', q: '너네도 해봐 엄청좋아' },
+      { id: '약 제조',     max: 5, d: '부작용 제거 · 주말 자동생성', q: '만들어서 먹어야지' },
+      { id: '약 판매',     max: 6, d: '주말 판매 수입', q: '너네도 해봐 엄청좋아' },
       { id: '다크웹 탐색', max: 1, d: '자동생성 개수 +1', q: '좋은 정보 있나...?' },
+      { id: '단골 판로', max: 3, d: '주말 판매 수입 +25%/lv', q: '형님 이번에도 부탁드립니다' },
       { id: '제가 좀 잘 만들어요', max: 1, d: '엔딩', q: '', end: '제가 좀 잘 만들어요' },
     ]},
     { nm: '사업가 트리 (담배·유통)', tree: '사업가', nodes: [
-      { id: '담배 제조',   max: 3, d: '부작용 제거 · 주말 자동생성', q: '만들어서 피워야지' },
-      { id: '담배 판매',   max: 3, d: '주말 판매 수입', q: '만드는게 더 낫겠는데?' },
+      { id: '담배 제조',   max: 5, d: '부작용 제거 · 주말 자동생성', q: '만들어서 피워야지' },
+      { id: '담배 판매',   max: 6, d: '주말 판매 수입', q: '만드는게 더 낫겠는데?' },
       { id: '거래처 확보', max: 1, d: '판매 단가 +100%', q: '한 번 드셔보시라니까' },
+      { id: '유통 인맥', max: 3, d: '아이템 효과 +20%/lv', q: '좋은 물건 들어오면 연락주세요' },
       { id: '저도 이제 대표입니다', max: 1, d: '엔딩', q: '', end: '저도 이제 대표입니다' },
     ]},
   ]},
   { 계열: '자기관리관련', 축: '회복률', 구간: [
     { nm: '기본', nodes: [
-      { id: '규칙적인 생활', max: 3, d: '취침 회복량 +30%', q: '이정도면 거의 농사꾼' },
-      { id: '주말은 쉬는 날', max: 1, d: '주말 회복량 +40%', q: '개인 시간은 지켜주시죠?' },
+      { id: '규칙적인 생활', max: 6, d: '취침 회복량 +30%', q: '이정도면 거의 농사꾼' },
+      { id: '주말은 쉬는 날', max: 3, d: '주말 회복량 +40%', q: '개인 시간은 지켜주시죠?' },
     ]},
     { nm: '운동 트리 (건강·평일형)', tree: '운동', sub: true, nodes: [
-      { id: '운동하기', max: 3, d: '운동 건강회복 +30% · 처리량 +0.3', q: '운동이 생명이다.' },
-      { id: '달리기',   max: 3, d: '지각 방어 33/67/100%', q: '이럴려고 운동했어요' },
+      { id: '운동하기', max: 7, d: '운동 건강회복 +30% · 처리량 +0.3', q: '운동이 생명이다.' },
+      { id: '달리기',   max: 4, d: '지각 방어 33/67/100%', q: '이럴려고 운동했어요' },
       { id: '헬창',     max: 1, d: '업무시간에 [운동하기] 해금', q: '타자 칠때마다 근손실 나는데요' },
+      { id: '주말 PT알바', max: 3, d: '알바 수입 +30%/lv', q: '회원님 세 개만 더요' },
       { id: '회사는 헬스장 가는 길에', max: 1, d: '엔딩', q: '', end: '회사는 헬스장 가는 길에' },
     ]},
     { nm: '기도 트리 (멘탈·주말형)', tree: '기도', sub: true, nodes: [
-      { id: '기도하기',  max: 3, d: '하루 시작 시 멘탈 +6 · 처리량 +0.3', q: '오늘 하루도 무사히' },
-      { id: '일기쓰기',  max: 3, d: '저녁 회복량 +25%', q: '팀장님 개싫어용' },
+      { id: '기도하기',  max: 6, d: '하루 시작 시 멘탈 +6 · 처리량 +0.3', q: '오늘 하루도 무사히' },
+      { id: '일기쓰기',  max: 5, d: '저녁 회복량 +25%', q: '팀장님 개싫어용' },
       { id: '주말 예배', max: 1, d: '주말에 [기도하기] 해금', q: '1억 받게 해주세요 아멘' },
+      { id: '무소유', max: 3, d: '모든 지출 -20%/lv', q: '없으면 없는대로 사는거지' },
       { id: '이 또한 지나가리라', max: 1, d: '엔딩', q: '', end: '이 또한 지나가리라' },
     ]},
   ]},
@@ -367,6 +396,53 @@ const KEY = 'salaryman_v1';
 const SCHEMA = 1;
 let S = null;
 let TAB = 'main';
+let SCREEN = 'title';        // 'title' | 'titledex' | 'game'
+
+/* ── 측정 ──────────────────────────────────────────────
+   로컬 집계는 항상. GA4 전송은 GA_ID 가 있고 개발자모드가 아닐 때만.
+   로컬 집계 확인:  __game.stats()
+   내 기기 제외:    __game.dev(true) 후 새로고침                 */
+const GA_ID = 'G-JMSJ8Z2CKX';           // GA4 측정 ID
+const SKEY = 'salaryman_stats';
+const DEVKEY = 'salaryman_dev';
+
+const isDev = () => { try { return localStorage.getItem(DEVKEY) === '1'; } catch (e) { return false; } };
+
+/* ── 이미지 ────────────────────────────────────────────
+   파일을 img/ 에 넣은 뒤 여기 경로를 채우면 화면에 나온다.
+   빈 문자열이면 이미지 없이 동작한다 (404 도 안 남는다).      */
+const IMG = {
+  title: '',          // 예: 'img/title.png'  (1000×560 권장)
+  sleep: '',          // 예: 'img/sleep.png'  (1000×560 권장)
+};
+
+/* 취침 화면 표시 여부 — 회차·저장과 무관한 개인 설정. 기본 ON */
+const OPTKEY = 'salaryman_sleepscreen';
+const sleepScreenOn = () => { try { return localStorage.getItem(OPTKEY) !== '0'; } catch (e) { return true; } };
+const setSleepScreen = on => { try { localStorage.setItem(OPTKEY, on ? '1' : '0'); } catch (e) {} };
+
+(function initGA() {
+  if (!GA_ID || isDev()) return;        // 개발자모드면 GA 스크립트 자체를 안 부름
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', GA_ID);
+})();
+
+function track(name, params) {
+  try {
+    const st = JSON.parse(localStorage.getItem(SKEY) || '{}');
+    st[name] = (st[name] || 0) + 1;
+    if (params && params.day) st.maxDay = Math.max(st.maxDay || 0, params.day);
+    localStorage.setItem(SKEY, JSON.stringify(st));
+  } catch (e) {}
+  if (isDev()) return;                  // 내 기기 테스트는 GA 로 안 보냄
+  try { if (window.gtag) window.gtag('event', name, params || {}); } catch (e) {}
+}
 
 function emptySkills() {
   const o = {};
@@ -423,28 +499,36 @@ const rank = () => {
 };
 const 직급 = () => CFG.직급[rank()];
 
+/* 감소형(1 - k×lv)은 lv 상한이 커져 음수가 되지 않도록 clamp 를 건다.
+   방어형(배열)은 최고 레벨에서 100% 가 되도록 단계를 재분배한다. */
+const 감쇠 = (k, lv, floor) => Math.max(floor, 1 - k * lv);
+
 const M = {
-  처리량:      () => CFG.P + sk('일잘러') * 0.9 + (sk('운동하기') + sk('기도하기')) * 0.3,
-  배정배율:    () => 1 - sk('팀원강화') * 0.15,
-  일멘탈배율:  () => 1 - sk('ai사용') * 0.18,
-  건강배율:    () => 1 - sk('짬처리') * 0.18,
-  야근배율:    () => 1 - sk('칼퇴문화') * 0.30,
-  부업멘탈배율:() => 1 - sk('MZ사원') * 0.15,
-  부업수입:    () => 1 + sk('재빠른손') * 0.20 + sk('SNS개설') * 0.50,
-  알바수입:    () => 1 + sk('재빠른손') * 0.20 + sk('알바n잡') * 0.25,
-  발각방어:    () => [0, .5, .75, 1][sk('사생활 보호 모니터')] || 0,
-  지각방어:    () => [0, .34, .67, 1][sk('달리기')] || 0,
-  취침배율:    () => 1 + sk('규칙적인 생활') * 0.30,
-  주말배율:    () => 1 + sk('주말은 쉬는 날') * 0.40,
-  저녁배율:    () => 1 + sk('일기쓰기') * 0.25,
-  운동배율:    () => 1 + sk('운동하기') * 0.30,
-  아침멘탈:    () => sk('기도하기') * 6,
-  월급배율:    () => 1 + sk('사내정치') * .25 + sk('임원진급') * .5
-                       + sk('팀원강화') * .15 + sk('일대신해줌') * .08,
-  월세배율:    () => 1 - sk('무지출챌린지') * 0.30,
+  처리량:      () => CFG.P + sk('일잘러') * 0.75 + (sk('운동하기') + sk('기도하기')) * 0.25,
+  배정배율:    () => 감쇠(0.12, sk('팀원강화'), 0.5),
+  일멘탈배율:  () => 감쇠(0.12, sk('ai사용'), 0.2),
+  건강배율:    () => 감쇠(0.12, sk('짬처리'), 0.2),
+  야근배율:    () => 감쇠(0.22, sk('칼퇴문화'), 0.4),
+  부업멘탈배율:() => 감쇠(0.11, sk('MZ사원'), 0.25),
+  부업수입:    () => 1 + sk('재빠른손') * 0.15 + sk('SNS개설') * 0.30,
+  알바수입:    () => 1 + sk('재빠른손') * 0.15 + sk('알바n잡') * 0.22 + sk('주말 PT알바') * 0.30,
+  알바건강배율:() => 감쇠(0.15, sk('알바 요령'), 0.4),
+  지출배율:    () => 감쇠(0.20, sk('무소유'), 0.4),
+  성과급:      () => sk('팀 성과급') * 20000,
+  판매배율:    () => 1 + sk('단골 판로') * 0.25,
+  발각방어:    () => [0, .4, .65, .85, 1][sk('사생활 보호 모니터')] || 0,
+  지각방어:    () => [0, .3, .55, .8, 1][sk('달리기')] || 0,
+  취침배율:    () => 1 + sk('규칙적인 생활') * 0.25,
+  주말배율:    () => 1 + sk('주말은 쉬는 날') * 0.30 + sk('골프 접대') * 0.25,
+  저녁배율:    () => 1 + sk('일기쓰기') * 0.22,
+  운동배율:    () => 1 + sk('운동하기') * 0.25,
+  아침멘탈:    () => sk('기도하기') * 5 + sk('팬 응원') * 4,
+  월급배율:    () => 1 + sk('사내정치') * .20 + sk('임원진급') * .40
+                       + sk('팀원강화') * .12 + sk('일대신해줌') * .08,
+  월세배율:    () => 감쇠(0.22, sk('무지출챌린지'), 0.4),
   카드최대:    () => sk('일대신해줌'),
-  아이템효과:  () => CFG.아이템회복 * (1 + sk('약·담배 효율') * 0.3),
-  상점할인:    () => 1 - sk('단골') * 0.15,
+  아이템효과:  () => CFG.아이템회복 * (1 + sk('약·담배 효율') * 0.25 + sk('유통 인맥') * 0.20),
+  상점할인:    () => 감쇠(0.12, sk('단골'), 0.5),
   피로:        () => 1 + S.day * CFG.피로계수,
   운보정:      () => S.items.부적 > 0 ? 0.5 : 1,   // 부적: 지각·발각 확률 반감
   배정량:      () => CFG.배정[rank()] * M.배정배율() * (1 + S.day * CFG.배정증가),
@@ -478,15 +562,31 @@ const blocks = () => isWeekend() ? 주말블록 : 평일블록;
 const curBlock = () => blocks()[S.bi];
 
 // 현재 블록의 선택지 목록
-function choices() {
+// 해당 블록의 전체 선택지 (미해금 포함) — 화면에 비활성으로 미리 보여주는 용도
+function choicesAll() {
   const b = curBlock();
-  const src = (b === '출근준비') ? CH.출근준비
-            : (b === '오전업무' || b === '오후업무') ? CH.업무
-            : (b === '점심') ? CH.점심
-            : (b === '퇴근') ? CH.퇴근
-            : (b === '저녁') ? CH.저녁
-            : CH.주말;
-  return src.filter(gateOk);
+  return (b === '출근준비') ? CH.출근준비
+       : (b === '오전업무' || b === '오후업무') ? CH.업무
+       : (b === '점심') ? CH.점심
+       : (b === '퇴근') ? CH.퇴근
+       : (b === '저녁') ? CH.저녁
+       : CH.주말;
+}
+
+function choices() { return choicesAll().filter(gateOk); }
+
+// 미해금 사유를 사람이 읽는 문구로. 진행도(현재 n)를 같이 보여준다
+function gateText(c) {
+  const p = [];
+  if (c.need) p.push('스킬 ' + c.need);
+  const g = c.gate;
+  if (g) {
+    if (g.line) p.push(g.line.replace('관련', '') + ' SP ' + g.sp + ' (현재 ' + 계열SP(g.line) + ')');
+    if (g.total) p.push('전체 SP ' + g.total + ' (현재 ' + 전체SP() + ')');
+    if (g.skill) p.push('스킬 ' + g.skill);
+    if (g.card) p.push('팀원 카드 ' + g.card + '개 (현재 ' + S.card + ')');
+  }
+  return p.join(' · ');
 }
 
 // 선택지의 실제 효과 (표시용 + 적용용)
@@ -506,7 +606,7 @@ function effect(c) {
     if (c.sneak || c.k === '부업하기' || c.alba) m *= M.부업멘탈배율();
     if (c.night) m *= M.야근배율();
   }
-  if (hp < 0) { hp *= M.건강배율(); if (c.night) hp *= M.야근배율(); }
+  if (hp < 0) { hp *= M.건강배율(); if (c.night) hp *= M.야근배율(); if (c.alba) hp *= M.알바건강배율(); }
   if (m > 0 && b === '저녁') m *= M.저녁배율();
   if (hp > 0 && c.k === '운동하기') hp *= M.운동배율();
   if (b.indexOf('주말') === 0) { if (m > 0) m *= M.주말배율(); if (hp > 0) hp *= M.주말배율(); }
@@ -517,10 +617,11 @@ function effect(c) {
     if (c.sneak || c.k === '부업하기') money *= M.부업수입();
     if (c.alba) money *= M.알바수입();
   }
+  if (money < 0) money *= M.지출배율();      // 무소유 — 모든 지출 감소
   // 딴짓 중 처리 (자는척 / 멀티태스킹)
   let extra = 0;
-  if (c.slack && sk('자는척') > 0) extra = M.처리량() * h * sk('자는척') * 0.15;
-  if (c.sneak && sk('멀티태스킹') > 0) extra = M.처리량() * h * sk('멀티태스킹') * 0.20;
+  if (c.slack && sk('자는척') > 0) extra = M.처리량() * h * Math.min(0.8, sk('자는척') * 0.15);
+  if (c.sneak && sk('멀티태스킹') > 0) extra = M.처리량() * h * Math.min(0.8, sk('멀티태스킹') * 0.15);
 
   return { m: Math.round(m), h: Math.round(hp), money: Math.round(money),
            work: Math.round(work * M.처리량() + extra + (c.workFlat || 0)),
@@ -550,9 +651,11 @@ function pick(c) {
       title: '지각', desc: '너무 개운해져버렸다!! 어떡하지?',
       opts: [
         { t: '시간멈추기 사용', need: () => S.items.시간멈추기 > 0,
-          run: () => { S.items.시간멈추기--; log('시간멈추기 사용. 지각 방어.'); } },
+          run: () => { S.items.시간멈추기--; log('시간멈추기 사용. 지각 방어.');
+                       S.lastDelta = '시간멈추기 사용 · 지각 방어'; } },
         { t: '지각한다 · 경고 +1',
-          run: () => { S.late = true; log('지각. 오전업무 3h → 1h.', 1); addWarn(null); } },
+          run: () => { S.late = true; log('지각. 오전업무 3h → 1h.', 1); addWarn(null);
+                       S.lastDelta = '지각 · 오전업무 3h → 1h · 경고 +1'; } },
       ]
     });
   }
@@ -592,27 +695,30 @@ function useItem(id) {
   if (S.items[id] <= 0) return false;
   S.items[id]--;
   const amt = Math.round(M.아이템효과());
+  let msg = '';
   if (id === '약') {
     S.h = Math.min(100, S.h + amt);
     const side = sk('약 제조') > 0 ? 0 : 10;
     S.m -= side;
-    log('약 사용. 건강 +' + amt + (side ? ' / 멘탈 -' + side : ' (부작용 없음)') + '.');
+    msg = '약 사용 · 건강 +' + amt + (side ? ' / 멘탈 -' + side : ' (부작용 없음)');
   } else if (id === '담배') {
     S.m = Math.min(100, S.m + amt);
     const side = sk('담배 제조') > 0 ? 0 : 10;
     S.h -= side;
-    log('담배 사용. 멘탈 +' + amt + (side ? ' / 건강 -' + side : ' (부작용 없음)') + '.');
+    msg = '담배 사용 · 멘탈 +' + amt + (side ? ' / 건강 -' + side : ' (부작용 없음)');
   } else if (id === '복권') {
     const luck = S.items.부적 > 0;          // 부적: 소액 당첨률 상향 (대박률은 그대로)
     const r = Math.random();
     const win = r < 0.03 ? 500000 : r < (luck ? 0.25 : 0.18) ? 40000 : 0;
     S.money += win;
-    log('복권 ' + (win ? '당첨! +' + won(win) : '꽝.'), !win);
+    msg = win ? '복권 당첨! +' + won(win) : '복권 꽝.';
   } else if (id === 'AI') {
     const cut = 40;
     S.work = Math.max(-M.배정량(), S.work - cut);
-    log('AI 사용. 업무 -' + cut + '. 누적 ' + Math.round(S.work) + '.');
+    msg = 'AI 사용 · 업무 -' + cut + ' (누적 ' + Math.round(S.work) + ')';
   }
+  log(msg + '.');
+  S.lastDelta = msg;
   return true;
 }
 
@@ -689,14 +795,34 @@ function pickDirect(c) {
 
 function endDay() {
   // 취침
+  const rm = Math.round(CFG.취침M * M.취침배율());
+  const rh = Math.round(CFG.취침H * M.취침배율());
   S.m = Math.min(100, S.m + CFG.취침M * M.취침배율());
   S.h = Math.min(100, S.h + CFG.취침H * M.취침배율());
   S.earned += CFG.SP율; S.sp += CFG.SP율;
   const sl = SLEEP[Math.floor(Math.random() * SLEEP.length)];
-  S.lastDelta = sl;
-  log(sl + '  멘탈 +' + Math.round(CFG.취침M * M.취침배율())
-      + ' / 건강 +' + Math.round(CFG.취침H * M.취침배율()) + ' / SP +' + CFG.SP율);
+  log(sl + '  멘탈 +' + rm + ' / 건강 +' + rh + ' / SP +' + CFG.SP율);
+  track('day_end', { day: S.day });
 
+  if (sleepScreenOn()) {
+    S.lastDelta = null;                 // 팝업이 대신 보여주므로 결과줄은 비운다
+    return openEvent({
+      title: '취침',
+      img: IMG.sleep,
+      tapAny: true,
+      desc: sl + SEP + SEP
+          + '멘탈 +' + rm + '   건강 +' + rh + SEP
+          + 'SP +' + CFG.SP율,
+      opts: [{ t: 'D' + (S.day + 1) + ' 아침으로', run: function () {} }]
+    });
+  }
+  // 건너뛰기 상태 — 취침 정보를 결과줄에 남긴다
+  S.lastDelta = sl + SEP + '멘탈 +' + rm + ' / 건강 +' + rh + ' / SP +' + CFG.SP율;
+  afterSleep();
+}
+
+// 취침 이후 — 날짜 넘김 · 승진 판정 · 다음날 시작
+function afterSleep() {
   const before = rank();
   S.day++; S.dow = S.dow === 7 ? 1 : S.dow + 1;
   S.bi = 0; S.late = false; S.skipEvening = false;
@@ -724,6 +850,7 @@ function morning() {
   const a = Math.round(M.배정량());
   S.work += a;
   log('금일 업무 배정 +' + a + '. 누적 ' + Math.round(S.work) + '.');
+  S.lastDelta = (S.lastDelta ? S.lastDelta + ' · ' : '') + '업무 배정 +' + a;
   checkGauges();
   if (S.phase === 'play') { render(); save(); }
 }
@@ -731,7 +858,7 @@ function morning() {
 function settle() {
   const pay = Math.round(CFG.주급 * M.월급배율());
   S.money += pay;
-  const rent = Math.round(CFG.월세 * M.월세배율());
+  const rent = Math.round(CFG.월세 * M.월세배율() * M.지출배율());
   log('월급 입금 +' + won(pay) + '.');
   // 제조 자동생성
   const 약제 = sk('약 제조'), 담제 = sk('담배 제조'), dw = sk('다크웹 탐색');
@@ -740,13 +867,18 @@ function settle() {
   // 판매 수입
   const 단가 = 12000 * (1 + sk('거래처 확보'));
   const 판매 = sk('약 판매') + sk('담배 판매');
-  if (판매) { const g = Math.round(단가 * 판매); S.money += g; log('제품 판매 +' + won(g) + '.'); }
+  const 판매액 = Math.round(단가 * 판매 * M.판매배율());
+  if (판매) { S.money += 판매액; log('제품 판매 +' + won(판매액) + '.'); }
+  // 팀 성과급
+  const 성과급 = M.성과급();
+  if (성과급) { S.money += 성과급; log('팀 성과급 +' + won(성과급) + '.'); }
 
   if (S.money >= rent) {
     S.money -= rent;
     log('월세 출금 -' + won(rent) + '. 잔액 ' + won(S.money) + '.');
     const lines = ['월급 ' + won(pay) + ' 입금!', ''];
-    if (판매) lines.push('제품 판매   +' + won(Math.round(단가 * 판매)));
+    if (성과급) lines.push('팀 성과급   +' + won(성과급));
+    if (판매) lines.push('제품 판매   +' + won(판매액));
     if (약제) lines.push('약 제조      ' + (약제 + dw) + '개');
     if (담제) lines.push('담배 제조    ' + 담제 + '개');
     lines.push('월세        -' + won(rent));
@@ -779,6 +911,7 @@ function badEnd(name) {
   S.phase = 'ending';
   S.over = { kind: 'bad', name: name };
   S.dex[name] = true;
+  track('bad_ending', { name: name, day: S.day });
   log('배드엔딩 — ' + name + '.', 1);
   render(); save();
 }
@@ -815,6 +948,7 @@ function fireEnding(node, treeName) {
   S.phase = 'ending';
   S.over = { kind: 'good', name: name };
   S.dex[name] = true;
+  track('good_ending', { name: name, day: S.day });
   log('엔딩 — ' + name + '.', 1);
   render(); save();
 }
@@ -825,6 +959,7 @@ function buyEstate() {
   S.phase = 'ending';
   S.over = { kind: 'good', name: '건물주' };
   S.dex['건물주'] = true;
+  track('good_ending', { name: '건물주', day: S.day });
   log('부동산 구매. 건물주 엔딩.', 1);
   render(); save();
 }
@@ -832,6 +967,7 @@ function buyEstate() {
 function restart(keepSp) {
   const dex = S.dex;
   const carry = keepSp ? Math.floor(S.bank + S.earned) : 0;
+  track(keepSp ? 'rebirth' : 'restart_fresh', { sp: carry });
   S = newRun(carry, dex);
   log('입사. 기수 시작. 보유 SP ' + carry + '.');
   morning();
@@ -883,7 +1019,17 @@ function renderMain() {
     if (a >= 1000 && a % 1000 === 0) return s + (a / 1000) + '천';
     return s + a.toLocaleString();
   };
-  choices().forEach((c, i) => {
+  const open = choices();
+  choicesAll().forEach(c => {
+    // 미해금 — 비활성 카드로 해금 조건만 표시
+    if (!gateOk(c)) {
+      h += '<button class="card lock" disabled>'
+         + '<span class="t">' + esc(c.k) + '</span>'
+         + '<span class="lk">🔒 ' + esc(gateText(c)) + '</span>'
+         + '</button>';
+      return;
+    }
+    const i = open.indexOf(c);
     const e = effect(c);
     const lines = [];   // 데스크톱 툴팁용 (전체)
     const sh = [];      // 터치기기 카드용 (압축)
@@ -912,7 +1058,6 @@ function renderMain() {
        + '</button>';
   });
   h += '</div>';
-  h += '<div id="log">' + S.log.map(l => '<div' + (l.b ? ' class="b"' : '') + '>' + esc(l.t) + '</div>').join('') + '</div>';
   return h;
 }
 
@@ -979,7 +1124,8 @@ function renderItems() {
 function sellPrice(id) {
   const base = SHOP.find(x => x.id === id).price;
   const lv = id === '약' ? sk('약 판매') : sk('담배 판매');
-  return Math.round(base * (0.5 + lv * 0.1));
+  // 구매가를 넘기면 상점 왕복만으로 무한 수익이 나므로 0.95 로 막는다
+  return Math.round(base * Math.min(0.95, 0.5 + lv * 0.07));
 }
 
 function renderShop() {
@@ -987,7 +1133,7 @@ function renderShop() {
   let h = '<h3>상점 <span style="float:right;font-weight:normal">소지금 ' + won(S.money) + '</span></h3><div class="grid4">';
   SHOP.forEach((it) => {
     if (it.id === '부동산') return;
-    const p = Math.round(it.price * M.상점할인());
+    const p = Math.round(it.price * M.상점할인() * M.지출배율());
     const 보유 = S.items[it.id] || 0;
     const 막힘 = S.money < p || (it.once && 보유 > 0);
     const 팔수있음 = (it.id === '약' || it.id === '담배');
@@ -1060,10 +1206,15 @@ function renderDex() {
 }
 
 function renderSet() {
-  return '<h3>설정</h3><table>'
+  return '<h3>화면</h3><table>'
+    + row('취침 화면', (sleepScreenOn() ? '보기' : '건너뛰기')
+        + ' <button data-opt="sleep" class="mini">' + (sleepScreenOn() ? '끄기' : '켜기') + '</button>')
+    + '</table>'
+    + '<h3>설정</h3><table>'
     + row('스키마', 'v' + SCHEMA)
     + row('저장', 'localStorage / ' + KEY)
-    + '</table><div class="btnrow"><button data-reset="1">데이터 초기화</button></div>'
+    + '</table><div class="btnrow"><button data-totitle="1">시작화면으로</button>'
+    + '<button data-reset="1">데이터 초기화</button></div>'
     + '<h3>수치</h3><table>'
     + row('P (시간당 처리량)', CFG.P)
     + row('배정량', CFG.배정.join(' / ') + ' × (1 + 근속일 × ' + CFG.배정증가 + ')')
@@ -1098,7 +1249,58 @@ function renderTabs() {
     '<button data-tab="' + k + '"' + (TAB === k ? ' class="on"' : '') + '>' + n + '</button>').join('');
 }
 
+/* ── 시작화면 ──
+   SCREEN = 'title' | 'titledex' | 'game'.  저장에 들어가지 않는 화면 상태 */
+function renderTitle() {
+  const 저장 = loadRaw();
+  const got = 저장 && 저장.dex ? DEX_ALL.filter(d => 저장.dex[d]).length : 0;
+  let h = '<div id="title">';
+  h += '<h1>직장인으로 살아남기</h1>';
+  h += '<div class="tag"></div>';
+  if (IMG.title) h += '<img class="titleimg" src="' + esc(IMG.title) + '" alt="">';
+  h += '<div class="menu">';
+  h += '<button data-title="new">새로하기</button>';
+  h += '<button data-title="continue"' + (저장 ? '' : ' disabled') + '>이어하기'
+     + (저장 ? '<span class="s">D' + 저장.day + ' · ' + 직급Of(저장) + '</span>'
+             : '<span class="s">저장된 기록 없음</span>') + '</button>';
+  h += '<button data-title="dex">도감<span class="s">' + got + ' / ' + DEX_ALL.length + '</span></button>';
+  h += '</div>';
+  h += '<div class="foot">멘탈 · 건강 · 업무 · 돈</div>';
+  h += '</div>';
+  return h;
+}
+
+// 저장본을 파싱만 해서 반환 (S 를 건드리지 않는다)
+function loadRaw() {
+  try {
+    const r = JSON.parse(localStorage.getItem(KEY) || 'null');
+    return (r && r.v === SCHEMA) ? r : null;
+  } catch (e) { return null; }
+}
+const 직급Of = st => CFG.직급[CFG.승진일.filter(d => st.day > d).length - 1] || CFG.직급[0];
+
+function renderTitleDex() {
+  const st = loadRaw() || { dex: {} };
+  const got = DEX_ALL.filter(d => st.dex[d]).length;
+  let h = '<h3>엔딩 도감 <span style="float:right;font-weight:normal">'
+        + got + ' / ' + DEX_ALL.length + '</span></h3><div class="dex">';
+  DEX_ALL.forEach(d => {
+    h += '<div class="dexit' + (st.dex[d] ? '' : ' no') + '">' + (st.dex[d] ? esc(d) : '???') + '</div>';
+  });
+  h += '</div><div class="btnrow"><button data-title="back">← 시작화면</button></div>';
+  return h;
+}
+
 function render() {
+  if (SCREEN !== 'game') {
+    $('bar').style.display = 'none';
+    $('tabs').style.display = 'none';
+    $('tabnote').style.display = 'none';
+    $('screen').innerHTML = SCREEN === 'title' ? renderTitle() : renderTitleDex();
+    return;
+  }
+  $('bar').style.display = '';
+  $('tabs').style.display = '';
   if (!S) return;
   renderBar();
   let body;
@@ -1120,12 +1322,16 @@ const renderStatusLink = () => '';
 /* ── 이벤트 팝업 ── */
 function openEvent(ev) {
   S.phase = 'event'; S.ev = ev;
-  let h = '<h2>' + esc(ev.title) + '</h2><div class="desc">' + esc(ev.desc) + '</div><div class="opts">';
+  let h = '<h2>' + esc(ev.title) + '</h2>';
+  // 이미지는 파일이 없으면 스스로 사라진다 — 그림 넣기 전에도 정상 동작
+  if (ev.img) h += '<img class="popimg" src="' + esc(ev.img) + '" alt="" onerror="this.remove()">';
+  h += '<div class="desc">' + esc(ev.desc) + '</div><div class="opts">';
   ev.opts.forEach((o, i) => {
     const ok = !o.need || o.need();
     h += '<button data-ev="' + i + '"' + (ok ? '' : ' disabled') + '>' + esc(o.t) + '</button>';
   });
   h += '</div>';
+  if (ev.tapAny) h += '<div class="taphint">아무 곳이나 탭하면 넘어갑니다</div>';
   $('pop').innerHTML = h;
   $('overlay').classList.add('on');
   renderBar();
@@ -1135,11 +1341,45 @@ function closeEvent() { $('overlay').classList.remove('on'); S.ev = null; }
 /* ══════════════════════════════════════════════════════════════
    5. EVENTS
    ══════════════════════════════════════════════════════════════ */
+/* 아무 곳이나 탭해서 닫기 — tapAny 팝업(취침)만. 첫 선택지를 실행한다 */
+document.addEventListener('click', e => {
+  if (e.target.closest('button')) return;              // 버튼 클릭은 아래 핸들러가 처리
+  const ov = document.getElementById('overlay');
+  if (!ov || !ov.classList.contains('on')) return;
+  const ev = S.ev;
+  if (!ev || !ev.tapAny || !ev.opts || !ev.opts[0]) return;
+  const btn = document.querySelector('#pop [data-ev="0"]');
+  if (btn) btn.click();
+});
+
 document.addEventListener('click', e => {
   const t = e.target.closest('button');
   if (!t) return;
 
+  if (t.dataset.title) {
+    const a = t.dataset.title;
+    if (a === 'dex') { SCREEN = 'titledex'; render(); return; }
+    if (a === 'back') { SCREEN = 'title'; render(); return; }
+    if (a === 'new') {
+      if (loadRaw() && !confirm('진행 중인 기록과 엔딩 도감이 모두 사라집니다. 새로 시작할까요?')) return;
+      localStorage.removeItem(KEY);
+      S = newRun(0, {}); log('입사. 기수 시작.'); morning();
+      track('game_start', { resumed: 0, day: 1 });
+      SCREEN = 'game'; TAB = 'main'; render(); save(); return;
+    }
+    if (a === 'continue') {
+      S = load();
+      if (!S) { render(); return; }
+      if (S.ev) { S.phase = 'play'; S.ev = null; }
+      track('game_resume', { day: S.day });
+      SCREEN = 'game'; TAB = 'main'; render(); return;
+    }
+    return;
+  }
+  if (t.dataset.totitle) { SCREEN = 'title'; TAB = 'main'; render(); return; }
+
   if (t.dataset.tab) { TAB = t.dataset.tab; render(); return; }
+  if (t.dataset.opt === 'sleep') { setSleepScreen(!sleepScreenOn()); render(); return; }
   if (t.dataset.ci !== undefined) { pick(choices()[+t.dataset.ci]); return; }
 
   if (t.dataset.ev !== undefined) {
@@ -1149,7 +1389,8 @@ document.addEventListener('click', e => {
     ev.opts[i].run();
     if (S.phase === 'play') {
       // 이벤트 종류에 따라 진행
-      if (ev.title === '승진') { dayStart(); }
+      if (ev.title === '취침') { afterSleep(); }
+      else if (ev.title === '승진') { dayStart(); }
       else if (ev.title === '월세 밀림' || ev.title === '월급날') { render(); save(); }
       else if (ev.title === '업무 밀림') { advance(); }
       else afterAction();
@@ -1168,7 +1409,7 @@ document.addEventListener('click', e => {
 
   if (t.dataset.buy) {
     const it = SHOP.find(x => x.id === t.dataset.buy);
-    const p = Math.round(it.price * M.상점할인());
+    const p = Math.round(it.price * M.상점할인() * M.지출배율());
     if (it.once && (S.items[it.id] || 0) > 0) return;
     if (S.money >= p) { S.money -= p; S.items[it.id]++; log(it.id + ' 구입 -' + won(p) + '.'); render(); save(); }
     return;
@@ -1193,6 +1434,7 @@ document.addEventListener('click', e => {
     if (!node.end && S.sp < 1) return;
     if (node.end) { S.skills[id] = 1; fireEnding(node, tree); return; }
     S.sp -= 1; S.skills[id]++;
+    track('skill_learn', { skill: id, lv: S.skills[id] });
     log('스킬 ' + id + ' Lv' + S.skills[id] + '.');
     render(); save();
     return;
@@ -1215,17 +1457,27 @@ window.__game = {
   set tab(v) { TAB = v; render(); },
   choices: () => choices(),
   effect: c => effect(c),
-  reset: () => { localStorage.removeItem(KEY); S = newRun(0, {}); log('입사. 기수 시작.'); morning(); render(); save(); },
+  get screen() { return SCREEN; },
+  set screen(v) { SCREEN = v; render(); },
+  reset: () => { localStorage.removeItem(KEY); S = newRun(0, {}); log('입사. 기수 시작.'); morning();
+                 SCREEN = 'game'; TAB = 'main'; render(); save(); },
   setSkill: (id, lv) => { S.skills[id] = lv; render(); save(); },
   giveSp: n => { S.sp += n; render(); save(); },
   giveMoney: n => { S.money += n; render(); save(); },
+  stats: () => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } },
+  statsReset: () => { localStorage.removeItem(SKEY); return 'ok'; },
+  log: () => S.log.map(l => l.t),      // 화면에서는 뺐지만 QA·디버깅용으로 유지
+  dev: on => {
+    try { localStorage.setItem(DEVKEY, on ? '1' : '0'); } catch (e) {}
+    return '개발자모드 ' + (isDev() ? 'ON — GA 전송 안 함' : 'OFF — GA 전송함') + '. 새로고침하세요.';
+  },
 };
 
 /* ── 부팅 ── */
 (function boot() {
-  S = load();
-  if (!S) { S = newRun(0, {}); log('입사. 기수 시작.'); morning(); }
-  else if (S.ev) { S.phase = 'play'; S.ev = null; }
+  // 시작화면부터. 게임 상태는 [새로하기] / [이어하기] 시점에 만든다
+  SCREEN = 'title';
+  track('title_view', { saved: loadRaw() ? 1 : 0 });
   render();
 })();
 </script>
