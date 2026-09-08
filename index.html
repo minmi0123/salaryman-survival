@@ -52,6 +52,10 @@ body{background:#fff;color:#000;font-family:"맑은 고딕","Malgun Gothic",sans
 .delta{text-align:center;font-size:13px;min-height:20px;margin-bottom:8px;white-space:pre-line}
 .delta span{margin:0 5px}
 
+/* 블록 그림 — 매 턴 뜨므로 세로를 아낀다. 짧은 화면에서는 vh 로 더 줄인다 */
+.blkimg{display:block;width:100%;max-width:300px;max-height:32vh;object-fit:contain;
+        margin:0 auto 10px;border:1.5px solid #000;background:#fff}
+
 /* ── 선택지 카드 ── */
 .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
 .card{border:1.5px solid #000;padding:10px 6px;cursor:pointer;background:#fff;text-align:center;
@@ -77,6 +81,8 @@ body{background:#fff;color:#000;font-family:"맑은 고딕","Malgun Gothic",sans
   .card[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;right:0;top:100%;
     z-index:30;background:#000;color:#fff;padding:7px 9px;font-size:11.5px;line-height:1.45;
     white-space:pre-line;border:1px solid #000;text-align:left;pointer-events:none}
+  /* 마지막 줄은 아래가 스크롤 영역 밖이라 잘린다 → 위로 뒤집는다 */
+  .cards .card[data-tip]:nth-last-child(-n+2):hover::after{top:auto;bottom:100%}
 }
 /* 터치기기(hover 없음) — 2줄 고정: 제목+위험 / 수치 */
 @media (hover:none){
@@ -510,6 +516,16 @@ const IMG = {
   // 인트로(프롤로그) — 새로하기 를 눌렀을 때만 순서대로 보여준다.
   // 빈 배열이면 인트로 없이 바로 게임이 시작된다. 장수는 자유.
   intro: ['img/intro/inst01.png', 'img/intro/inst02.png', 'img/intro/inst03.png'],
+  // 블록 그림 — 게임화면 선택지 위에 뜬다. 빈 문자열이면 그림 없이 동작한다.
+  blockDir: 'img/blk/',
+};
+
+/* 블록 → 그림 파일. 주말은 블록이 3개지만 그림은 요일 단위(토·일)라
+   토요일이면 3블록 모두 blk07, 일요일이면 blk08 을 쓴다. */
+const BLKIMG = {
+  출근준비: 'blk01.png', 오전업무: 'blk02.png', 점심: 'blk03.png',
+  오후업무: 'blk04.png', 퇴근:    'blk05.png', 저녁: 'blk06.png',
+  토요일:   'blk07.png', 일요일:  'blk08.png',
 };
 
 /* 취침 화면 표시 여부 — 회차·저장과 무관한 개인 설정. 기본 ON */
@@ -656,6 +672,13 @@ function gateOk(c) {
 const isWeekend = () => S.dow >= 6;
 const blocks = () => isWeekend() ? 주말블록 : 평일블록;
 const curBlock = () => blocks()[S.bi];
+
+// 현재 블록의 그림 태그. 파일이 없으면 <img> 가 스스로 사라진다
+const blockImgTag = () => {
+  if (!IMG.blockDir) return '';
+  const f = isWeekend() ? (S.dow === 6 ? BLKIMG.토요일 : BLKIMG.일요일) : BLKIMG[curBlock()];
+  return f ? '<img class="blkimg" src="' + IMG.blockDir + f + '" alt="" onerror="this.remove()">' : '';
+};
 
 // 현재 블록의 선택지 목록
 // 해당 블록의 전체 선택지 (미해금 포함) — 화면에 비활성으로 미리 보여주는 용도
@@ -1111,6 +1134,7 @@ function renderMain() {
         + '<div class="blockname">' + BLK[b].label + ' (' + BLK[b].h + '시간)'
         + (S.late && b === '오전업무' ? ' · 지각으로 1시간' : '') + '</div>'
         + '<div class="delta">' + (S.lastDelta ? esc(S.lastDelta) : '&nbsp;') + '</div>'
+        + blockImgTag()
         + '<div class="cards">';
   // 터치기기용 압축 금액 표기: 3000 -> -3천 / 140000 -> -14만
   const sw = v => {
