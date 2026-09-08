@@ -3,7 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>직장인으로 살아남기</title>
+<title>직장에서 살아남기</title>
+<meta name="description" content="멘탈·건강·업무·돈 4개 게이지로 버티는 환생 반복형 직장인 시뮬레이션. 퇴사·아사·백수·짤림부터 건물주·꼰대임원까지 엔딩 21종.">
+
+<!-- 공유 카드 (카톡·X·디시 등 링크 미리보기) — 절대 URL 이어야 한다 -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="직장에서 살아남기">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:title" content="직장에서 살아남기">
+<meta property="og:description" content="당신은 어떻게 끝날까? 퇴사 · 아사 · 백수 · 짤림 · 건물주 · 꼰대임원 … 엔딩 21종.">
+<meta property="og:url" content="https://minmi0123.github.io/salaryman-survival/">
+<meta property="og:image" content="https://minmi0123.github.io/salaryman-survival/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="직장에서 살아남기">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="직장에서 살아남기">
+<meta name="twitter:description" content="당신은 어떻게 끝날까? 엔딩 21종.">
+<meta name="twitter:image" content="https://minmi0123.github.io/salaryman-survival/img/og.png">
+
+<!-- favicon — 이모지를 SVG 로 감싼다. 별도 파일이 필요 없고 404 도 안 난다 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%BC%3C/text%3E%3C/svg%3E">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#fff;color:#000;font-family:"맑은 고딕","Malgun Gothic",sans-serif;
@@ -1333,7 +1353,7 @@ function renderTitle() {
   const 저장 = loadRaw();
   const got = 저장 && 저장.dex ? DEX_ALL.filter(d => 저장.dex[d]).length : 0;
   let h = '<div id="title">';
-  h += '<h1>직장인으로 살아남기</h1>';
+  h += '<h1>직장에서 살아남기</h1>';
   h += '<div class="tag"></div>';
   if (IMG.title) h += '<img class="titleimg" src="' + esc(IMG.title) + '" alt="">';
   h += '<div class="menu">';
