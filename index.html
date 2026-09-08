@@ -128,8 +128,20 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 
 /* ── 도감 ── */
 .dex{display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:12px}
-.dexit{border:1px solid #000;padding:5px 6px}
+.dexit{border:1px solid #000;padding:5px 6px;background:#fff;font:inherit;font-size:12px;
+       color:inherit;text-align:left;cursor:pointer;width:100%}
 .dexit.no{color:#aaa;border-style:dashed}
+.dexit:active{background:#eee}
+.endimg{display:block;width:100%;max-width:340px;margin:0 auto 14px;border:1px solid #000}
+
+/* ── 인트로 ── */
+#intro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+       padding:24px 18px;text-align:center}
+#intro .introimg{width:100%;max-width:360px;border:1.5px solid #000;margin-bottom:18px}
+#intro .dots{font-size:12px;color:#777;letter-spacing:4px;margin-bottom:14px}
+#intro button{border:1.5px solid #000;background:#fff;padding:13px;font:inherit;
+              font-size:15px;font-weight:bold;cursor:pointer;width:100%;max-width:280px}
+.condlbl{font-size:11px;color:#666;margin-bottom:6px;text-align:center}
 
 /* ── 시작화면 ── */
 #title{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -381,6 +393,62 @@ const DEX_ALL = [
   '건물주', '퇴사', '아사', '백수', '짤림',
 ];
 
+/* ── 엔딩 도감 정보 ────────────────────────────────────────
+   img  : 그림 경로. 파일이 없으면 <img> 가 스스로 사라진다.
+          한글 파일명은 쓰지 않는다 — 맥(NFD)과 서버(NFC)가 어긋나
+          로컬에선 보이는데 배포하면 404 가 나기 때문이다.
+   cond : 획득 조건. CFG 를 읽는 함수라 밸런스를 고쳐도 문구가 따라온다
+          (수치와 설명이 어긋나는 사고 방지 — 세션정리 §10-4)              */
+const 트리조건 = (tree, 미착수) =>
+  tree + ' 트리 완주' + SEP + '소지금 ' + won(CFG.엔딩돈) + ' 이상' + SEP + 'SP 불필요'
+  + (미착수 ? SEP + '자기관리(운동·기도) 미착수' : '');
+
+const 조합조건 = (tree, sub) =>
+  tree + ' 트리 완주' + SEP + '소지금 ' + won(CFG.엔딩돈) + ' 이상' + SEP
+  + sub + ' 계열 우세' + SEP
+  + '(운동·기도를 둘 다 찍었다면 레벨 합이 큰 쪽. 동률이면 운동)';
+
+const ENDINFO = {
+  // 트리 단독 — 자기관리를 하나라도 찍으면 조합 엔딩으로 바뀐다
+  '하극상':                       { img: 'end01.png', cond: () => 트리조건('사장님', 1) },
+  '연금이나타자':                 { img: 'end02.png', cond: () => 트리조건('팀장님', 1) },
+  '직장인 왜하는데ㅋㅋ':          { img: 'end03.png', cond: () => 트리조건('돈많은백수', 1) },
+  '이제 이게 본업인데요?':        { img: 'end04.png', cond: () => 트리조건('크리에이터', 1) },
+  '제가 좀 잘 만들어요':          { img: 'end05.png', cond: () => 트리조건('검은손', 1) },
+  '저도 이제 대표입니다':         { img: 'end06.png', cond: () => 트리조건('사업가', 1) },
+  '회사는 헬스장 가는 길에':      { img: 'end07.png', cond: () => 트리조건('운동', 0) },
+  '이 또한 지나가리라':           { img: 'end08.png', cond: () => 트리조건('기도', 0) },
+  // 조합 — 메인트리 완주 + 자기관리 분기
+  '꼰대임원':                     { img: 'end09.png', cond: () => 조합조건('사장님 또는 팀장님', '운동') },
+  '헬스장사장님':                 { img: 'end10.png', cond: () => 조합조건('크리에이터', '운동') },
+  '치킨집사장님':                 { img: 'end11.png', cond: () => 조합조건('돈많은백수', '운동') },
+  '헬창조직보스':                 { img: 'end12.png', cond: () => 조합조건('검은손 또는 사업가', '운동') },
+  '출근이 곧 수행':               { img: 'end13.png', cond: () => 조합조건('사장님 또는 팀장님', '기도') },
+  '구독자가 곧 신도':             { img: 'end14.png', cond: () => 조합조건('크리에이터', '기도') },
+  '가진 게 없으니 잃을 것도 없다': { img: 'end15.png', cond: () => 조합조건('돈많은백수', '기도') },
+  '이거 드시고 구원받으세요':     { img: 'end16.png', cond: () => 조합조건('검은손 또는 사업가', '기도') },
+  // 특수
+  '건물주':                       { img: 'end17.png',
+                                    cond: () => '주말 상점에서 부동산 구매' + SEP + '소지금 ' + won(CFG.부동산가) + ' 필요' },
+  // 배드엔딩 — 축마다 카운터가 따로다. 골고루 닳으면 터지지 않는다
+  '퇴사': { img: 'end18.png', cond: () => '멘탈 고갈 ' + CFG.게이지임계 + '회' },
+  '아사': { img: 'end19.png', cond: () => '건강 고갈 ' + CFG.게이지임계 + '회' },
+  '백수': { img: 'end20.png', cond: () => '월세 미납 ' + CFG.월세임계 + '회' },
+  '짤림': { img: 'end21.png',
+            cond: () => '업무 고갈 ' + CFG.게이지임계 + '회' + SEP
+                      + '또는 회사 경고(지각·발각) ' + CFG.회사경고임계 + '회' },
+};
+
+// 엔딩 그림 경로. endDir 가 비어 있으면 '' 를 돌려줘 아예 부르지 않는다
+const endSrc = nm => {
+  const i = ENDINFO[nm];
+  return (IMG.endDir && i && i.img) ? IMG.endDir + i.img : '';
+};
+const endImgTag = nm => {
+  const src = endSrc(nm);
+  return src ? '<img class="endimg" src="' + src + '" alt="" onerror="this.remove()">' : '';
+};
+
 const 경고대사 = {
   멘탈: ['요즘 좀 힘드니?', '회사생활이 다 그래', '그럴거면 나가라'],
   건강: ['반차내고 병원가봐', '몸이 안좋으면 집에서 쉬어', '그럴거면 나가라'],
@@ -396,7 +464,8 @@ const KEY = 'salaryman_v1';
 const SCHEMA = 1;
 let S = null;
 let TAB = 'main';
-let SCREEN = 'title';        // 'title' | 'titledex' | 'game'
+let SCREEN = 'title';        // 'title' | 'titledex' | 'intro' | 'game'
+let INTRO = 0;               // 인트로에서 몇 번째 장을 보고 있나
 
 /* ── 측정 ──────────────────────────────────────────────
    로컬 집계는 항상. GA4 전송은 GA_ID 가 있고 개발자모드가 아닐 때만.
@@ -412,8 +481,15 @@ const isDev = () => { try { return localStorage.getItem(DEVKEY) === '1'; } catch
    파일을 img/ 에 넣은 뒤 여기 경로를 채우면 화면에 나온다.
    빈 문자열이면 이미지 없이 동작한다 (404 도 안 남는다).      */
 const IMG = {
-  title: '',          // 예: 'img/title.png'  (1000×560 권장)
-  sleep: '',          // 예: 'img/sleep.png'  (1000×560 권장)
+  title: 'img/title.png',
+  sleep: 'img/sleep.png',
+  // 엔딩 그림 21종을 한 번에 켜는 스위치. 빈 문자열이면 엔딩 그림을 아예 안 부른다.
+  // 그림을 img/end/ 에 넣은 뒤 'img/end/' 로 바꾸면 21종이 동시에 살아난다.
+  // 아직 안 그린 것은 <img> 가 스스로 사라지므로 하나씩 채워도 된다.
+  endDir: 'img/end/',
+  // 인트로(프롤로그) — 새로하기 를 눌렀을 때만 순서대로 보여준다.
+  // 빈 배열이면 인트로 없이 바로 게임이 시작된다. 장수는 자유.
+  intro: ['img/intro/inst01.png', 'img/intro/inst02.png', 'img/intro/inst03.png'],
 };
 
 /* 취침 화면 표시 여부 — 회차·저장과 무관한 개인 설정. 기본 ON */
@@ -1200,7 +1276,7 @@ function renderDex() {
   if (got >= DEX_ALL.length) h += '<p class="big">도감 완성</p>';
   h += '<div class="dex">';
   DEX_ALL.forEach(d => {
-    h += '<div class="dexit' + (S.dex[d] ? '' : ' no') + '">' + (S.dex[d] ? esc(d) : '???') + '</div>';
+    h += dexCell(d, !!S.dex[d]);
   });
   h += '</div>';
   return h;
@@ -1229,7 +1305,8 @@ function renderSet() {
 function renderEnding() {
   const o = S.over;
   if (o.kind === 'bad') {
-    return '<div class="big">' + esc(o.name) + '</div>'
+    return endImgTag(o.name)
+      + '<div class="big">' + esc(o.name) + '</div>'
       + '<div class="sub">"안녕 나는 직장인이었던 유령인데 ' + esc(o.name) + '여서 죽었어.\n'
       + '다시 직장생활을 하면 잘 할 수 있을 것 같아.\n한번 더 도전해보고싶어."</div>'
       + '<table>' + row('생존', 'D' + S.day) + row('이번 회차 획득 SP', S.earned)
@@ -1237,7 +1314,8 @@ function renderEnding() {
       + '<div class="btnrow"><button data-re="1">환생하기</button>'
       + '<button data-re="0">처음부터하기</button></div>';
   }
-  return '<div class="big">' + esc(o.name) + '</div>'
+  return endImgTag(o.name)
+    + '<div class="big">' + esc(o.name) + '</div>'
     + '<table>' + row('생존', 'D' + S.day) + row('소지금', won(S.money)) + '</table>'
     + '<div class="btnrow"><button data-re="0">새 인생 시작</button></div>';
 }
@@ -1278,13 +1356,33 @@ function loadRaw() {
 }
 const 직급Of = st => CFG.직급[CFG.승진일.filter(d => st.day > d).length - 1] || CFG.직급[0];
 
+/* ── 인트로(프롤로그) ──
+   새로하기 에서만 지난다. 엔딩 후 환생·처음부터하기(restart)는 거치지 않는다. */
+function renderIntro() {
+  const list = IMG.intro, last = INTRO >= list.length - 1;
+  let h = '<div id="intro">';
+  h += '<img class="introimg" src="' + esc(list[INTRO]) + '" alt="" onerror="this.remove()">';
+  h += '<div class="dots">' + list.map((_, i) => i === INTRO ? '●' : '○').join('') + '</div>';
+  h += '<button data-intro="' + (last ? 'start' : 'next') + '">' + (last ? '시작' : '다음') + '</button>';
+  h += '</div>';
+  return h;
+}
+
+/* 실제 새 게임 시작 — 인트로가 있으면 그 끝에서, 없으면 새로하기 에서 바로 부른다 */
+function startNewGame() {
+  localStorage.removeItem(KEY);
+  S = newRun(0, {}); log('입사. 기수 시작.'); morning();
+  track('game_start', { resumed: 0, day: 1 });
+  SCREEN = 'game'; TAB = 'main'; render(); save();
+}
+
 function renderTitleDex() {
   const st = loadRaw() || { dex: {} };
   const got = DEX_ALL.filter(d => st.dex[d]).length;
   let h = '<h3>엔딩 도감 <span style="float:right;font-weight:normal">'
         + got + ' / ' + DEX_ALL.length + '</span></h3><div class="dex">';
   DEX_ALL.forEach(d => {
-    h += '<div class="dexit' + (st.dex[d] ? '' : ' no') + '">' + (st.dex[d] ? esc(d) : '???') + '</div>';
+    h += dexCell(d, !!st.dex[d]);
   });
   h += '</div><div class="btnrow"><button data-title="back">← 시작화면</button></div>';
   return h;
@@ -1295,7 +1393,9 @@ function render() {
     $('bar').style.display = 'none';
     $('tabs').style.display = 'none';
     $('tabnote').style.display = 'none';
-    $('screen').innerHTML = SCREEN === 'title' ? renderTitle() : renderTitleDex();
+    $('screen').innerHTML = SCREEN === 'title' ? renderTitle()
+                          : SCREEN === 'intro' ? renderIntro()
+                          : renderTitleDex();
     return;
   }
   $('bar').style.display = '';
@@ -1337,6 +1437,28 @@ function openEvent(ev) {
 }
 function closeEvent() { $('overlay').classList.remove('on'); S.ev = null; }
 
+/* ── 엔딩 도감 팝업 ──
+   게임 상태(S)를 건드리지 않는다. 시작화면 도감(S === null)에서도 열려야 하기 때문. */
+let DEXPOP = null;
+
+const dexCell = (name, got) =>
+  '<button class="dexit' + (got ? '' : ' no') + '" data-dex="' + esc(name) + '">'
+  + (got ? esc(name) : '???') + '</button>';
+
+function openDexPop(name, got) {
+  const info = ENDINFO[name];
+  let h = '<h2>' + (got ? esc(name) : '???') + '</h2>';
+  const src = got ? endSrc(name) : '';
+  if (src) h += '<img class="popimg" src="' + src + '" alt="" onerror="this.remove()">';
+  h += '<div class="condlbl">획득 조건</div>';
+  h += '<div class="desc">' + esc(info ? info.cond() : '조건 미기재') + '</div>';
+  h += '<div class="opts"><button data-dexclose="1">닫기</button></div>';
+  DEXPOP = name;
+  $('pop').innerHTML = h;
+  $('overlay').classList.add('on');
+}
+function closeDexPop() { $('overlay').classList.remove('on'); DEXPOP = null; }
+
 /* ══════════════════════════════════════════════════════════════
    5. EVENTS
    ══════════════════════════════════════════════════════════════ */
@@ -1345,7 +1467,8 @@ document.addEventListener('click', e => {
   if (e.target.closest('button')) return;              // 버튼 클릭은 아래 핸들러가 처리
   const ov = document.getElementById('overlay');
   if (!ov || !ov.classList.contains('on')) return;
-  const ev = S.ev;
+  if (DEXPOP) { closeDexPop(); return; }       // 도감 팝업은 바깥 탭으로 닫는다
+  const ev = S && S.ev;                        // 시작화면에서는 S 가 null 이다
   if (!ev || !ev.tapAny || !ev.opts || !ev.opts[0]) return;
   const btn = document.querySelector('#pop [data-ev="0"]');
   if (btn) btn.click();
@@ -1361,10 +1484,9 @@ document.addEventListener('click', e => {
     if (a === 'back') { SCREEN = 'title'; render(); return; }
     if (a === 'new') {
       if (loadRaw() && !confirm('진행 중인 기록과 엔딩 도감이 모두 사라집니다. 새로 시작할까요?')) return;
-      localStorage.removeItem(KEY);
-      S = newRun(0, {}); log('입사. 기수 시작.'); morning();
-      track('game_start', { resumed: 0, day: 1 });
-      SCREEN = 'game'; TAB = 'main'; render(); save(); return;
+      // 저장 삭제는 인트로가 끝난 뒤에 한다 — 도중에 창을 닫아도 기록이 남는다
+      if (IMG.intro && IMG.intro.length) { INTRO = 0; SCREEN = 'intro'; render(); return; }
+      startNewGame(); return;
     }
     if (a === 'continue') {
       S = load();
@@ -1376,6 +1498,18 @@ document.addEventListener('click', e => {
     return;
   }
   if (t.dataset.totitle) { SCREEN = 'title'; TAB = 'main'; render(); return; }
+
+  if (t.dataset.intro) {
+    if (t.dataset.intro === 'next') { INTRO++; render(); return; }
+    startNewGame(); return;
+  }
+  if (t.dataset.dexclose) { closeDexPop(); return; }
+  if (t.dataset.dex) {
+    const nm = t.dataset.dex;
+    const st = (SCREEN === 'game' && S) ? S : (loadRaw() || { dex: {} });
+    openDexPop(nm, !!(st.dex && st.dex[nm]));
+    return;
+  }
 
   if (t.dataset.tab) { TAB = t.dataset.tab; render(); return; }
   if (t.dataset.opt === 'sleep') { setSleepScreen(!sleepScreenOn()); render(); return; }

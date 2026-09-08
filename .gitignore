@@ -17,3 +17,6 @@ node_modules/
 # macOS
 .DS_Store
 ._*
+
+# 그림 원본(잘라내기 전) — 원본은 iCloud 메모에 남아 있다
+img/_raw/
