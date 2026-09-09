@@ -160,6 +160,12 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
        color:inherit;text-align:left;cursor:pointer;width:100%}
 .dexit.no{color:#aaa;border-style:dashed}
 .dexit:active{background:#eee}
+.verdict{border:2px solid #000;padding:10px;text-align:center;font-size:14px;margin-bottom:9px}
+.verdict b{font-size:16px}
+.verdict .cnt{display:block;font-size:11px;color:#666;margin-top:3px}
+.typebox{border:1.5px solid #000;padding:9px;margin-bottom:12px;text-align:center}
+.typename{font-size:16px;font-weight:bold}
+.typesub{font-size:11.5px;color:#555;margin-top:4px;line-height:1.5}
 .endimg{display:block;width:100%;max-width:340px;margin:0 auto 14px;border:1px solid #000}
 
 /* ── 인트로 ── */
@@ -424,6 +430,115 @@ const DEX_ALL = [
   '건물주', '퇴사', '아사', '백수', '짤림',
 ];
 
+/* ══════════════════════════════════════════════════════════════
+   직장인 유형 진단 — 2축 + 꼬리표
+   회차 동안 누른 선택지를 세어 판정한다. 엔딩을 볼 때 도감 칸에 박제되고,
+   같은 엔딩을 다시 보면 덮어쓴다. 도감 총평은 그 기록들의 최빈값이다.
+   ══════════════════════════════════════════════════════════════ */
+
+// ① 일 처리 — 근무 시간(업무·점심·퇴근)에 고른 것만 센다.
+//    저녁·주말에 노는 건 요령이 아니라 그냥 쉬는 것이다.
+const 근무블록 = ['오전업무', '오후업무', '점심', '퇴근'];
+const 축1 = {
+  정공법: ['일하기', '야근하기', '잔업하기', '자리에서 먹고 일하기', '굶고 일하기'],
+  요령:   ['일하는척하기', '대놓고 놀기', '짬때리기', '팀원에게 전화하기', '몰래 부업하기'],
+};
+// ② 돈벌이 — 시간대 무관
+const 축2 = {
+  탈출:   ['부업하기', '몰래 부업하기', '알바하기', '자기계발'],
+  버티기: ['일하기', '야근하기', '잔업하기', '팀장님과 점심'],
+};
+// ③ 꼬리표 — 몸 관리. 기회 대비 비율로 본다
+const 관리선택 = ['더자기', '한약', '잠자기', '운동하기', '기도하기'];
+
+// 2축 조합 → 유형 이름
+const 유형표 = {
+  '정공법|버티기': '회사가 곧 인생',
+  '정공법|탈출':   '올빼미인간',
+  '요령|버티기':   '가늘고 길게',
+  '요령|탈출':     '회사는 거들 뿐',
+};
+const 꼬리표 = { 관리: '챙길건 몸뚱아리뿐', 방치: '젊을때 고생하는거지' };
+// 무너진 축 → 한 줄. 배드엔딩은 터진 축, 굿엔딩은 끝까지 지킨 축
+const 무너짐 = { 멘탈: '멘탈털림', 건강: '건강털림', 업무: '업무과다', 돈: '소비과다' };
+const 지킴   = { 멘탈: '멘탈이라도 챙겨야지', 건강: '건강이라도 챙겨야지',
+                 업무: '일만 열심히 했다',   돈: '열심히 저축만 했다' };
+
+/* 선택 1회를 집계에 반영한다. pick() 에서 부른다. */
+function 집계(블록, 이름) {
+  const t = S.tally;
+  if (!t) return;
+  if (근무블록.indexOf(블록) >= 0) {
+    if (축1.정공법.indexOf(이름) >= 0) t.정공법++;
+    if (축1.요령.indexOf(이름) >= 0)   t.요령++;
+  }
+  if (축2.탈출.indexOf(이름) >= 0)   t.탈출++;
+  if (축2.버티기.indexOf(이름) >= 0) t.버티기++;
+  t.기회++;
+  if (관리선택.indexOf(이름) >= 0) t.관리++;
+}
+
+/* 이번 회차를 진단한다. 도감에 저장할 객체를 돌려준다.
+   표본이 없는 축은 0.5(판정 유보)로 둔다. */
+function 진단() {
+  const t = S.tally || { 정공법: 0, 요령: 0, 탈출: 0, 버티기: 0, 관리: 0, 기회: 0 };
+  const 비율 = (a, b) => (a + b > 0 ? a / (a + b) : 0.5);
+  const a1 = 비율(t.정공법, t.요령);      // 1 에 가까울수록 정공법
+  const a2 = 비율(t.탈출, t.버티기);      // 1 에 가까울수록 탈출
+  const a3 = t.기회 > 0 ? t.관리 / t.기회 : 0;
+
+  // 굿엔딩은 끝까지 가장 높게 유지된 축, 배드엔딩은 가장 많이 터진 축
+  const bad = !!(S.over && S.over.kind === 'bad');
+  let 축 = '멘탈';
+  if (bad) {
+    const c = { 멘탈: S.wm, 건강: S.wh, 업무: S.wk, 돈: S.wmoney };
+    축 = Object.keys(c).reduce((x, y) => (c[y] > c[x] ? y : x), '멘탈');
+  } else {
+    // 네 축을 0~1 로 맞춰 같은 자로 잰다.
+    // 돈 기준은 부동산가(30만). 엔딩돈(15만)으로 나누면 굿엔딩 조건이
+    // 소지금 15만 이상이라 값이 항상 1 을 넘어 돈이 무조건 이긴다.
+    const cap = x => Math.max(0, Math.min(1, x));
+    const g = {
+      멘탈: cap(S.m / 100), 건강: cap(S.h / 100),
+      업무: cap(1 - S.work / Math.max(1, M.배정량())),
+      돈:   cap(S.money / CFG.부동산가),
+    };
+    축 = Object.keys(g).reduce((x, y) => (g[y] > g[x] ? y : x), '멘탈');
+  }
+  return { a1: r2(a1), a2: r2(a2), a3: r2(a3), bad: bad, 축: 축, day: S.day };
+}
+const r2 = x => Math.round(x * 100) / 100;
+
+/* 도감 총평 — 기록된 유형들의 최빈값.
+   평균을 쓰면 도감을 모을수록 0.5 로 수렴해 "균형형" 만 나온다.
+   최빈은 횟수가 같이 보여 근거가 드러나고, 다 모아도 뭉개지지 않는다. */
+function 총평(dex) {
+  const 표 = {}; let 기록수 = 0;
+  DEX_ALL.forEach(d => {
+    const v = 유형풀이(dex[d]);        // 옛 저장본의 true 는 null 이 돼 걸러진다
+    if (!v) return;
+    기록수++;
+    표[v.이름] = (표[v.이름] || 0) + 1;
+  });
+  if (!기록수) return null;
+  let 최다 = '', 수 = 0;
+  Object.keys(표).forEach(k => { if (표[k] > 수) { 최다 = k; 수 = 표[k]; } });
+  return { 이름: 최다, 수: 수, 기록수: 기록수 };
+}
+
+/* 진단 결과 → 화면에 쓸 문구들 */
+function 유형풀이(d) {
+  if (!d || typeof d !== 'object') return null;
+  const k1 = d.a1 >= 0.5 ? '정공법' : '요령';
+  const k2 = d.a2 >= 0.5 ? '탈출' : '버티기';
+  const 이름 = 유형표[k1 + '|' + k2];
+  // 꼬리표는 뚜렷할 때만. 애매하면 안 붙인다
+  let tag = '';
+  if (d.a3 >= 0.35) tag = 꼬리표.관리;
+  else if (d.a3 <= 0.12) tag = 꼬리표.방치;
+  return { 이름: 이름, 꼬리: tag, 끝: (d.bad ? 무너짐 : 지킴)[d.축] || '' };
+}
+
 /* ── 엔딩 도감 정보 ────────────────────────────────────────
    img  : 그림 경로. 파일이 없으면 <img> 가 스스로 사라진다.
           한글 파일명은 쓰지 않는다 — 맥(NFD)과 서버(NFC)가 어긋나
@@ -591,6 +706,8 @@ function newRun(carrySp, dex) {
     sp: carrySp, earned: 0, bank: carrySp,
     skills: emptySkills(),
     dex: dex || {},
+    // 유형 진단용 선택 집계. 회차마다 새로 시작한다
+    tally: { 정공법: 0, 요령: 0, 탈출: 0, 버티기: 0, 관리: 0, 기회: 0 },
     log: [],
     phase: 'play', ev: null,
     late: false, skipEvening: false,
@@ -600,6 +717,9 @@ function newRun(carrySp, dex) {
 }
 
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+/* 저장 삭제 — localStorage 가 막힌 환경(아이폰 프라이빗 브라우징 등)에서는
+   예외가 난다. 감싸지 않으면 [새로하기] 가 그 줄에서 멈춰 게임이 시작되지 않는다. */
+function 저장삭제() { try { localStorage.removeItem(KEY); } catch (e) {} }
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -778,6 +898,7 @@ function pick(c) {
   if (e.card) { S.card = Math.min(M.카드최대(), S.card + e.card); d.push('팀원 카드 +1'); }
   if (e.cardUse) { S.card = Math.max(0, S.card - e.cardUse); d.push('팀원 카드 -' + e.cardUse); }
   S.lastDelta = d.join(' · ');
+  집계(b, c.k);
   log(BLK[b].label + ' — ' + c.k + '. ' + (d.join(' / ') || '변화 없음'));
 
   if (c.night) S.skipEvening = true;
@@ -1053,7 +1174,7 @@ function settle() {
 function badEnd(name) {
   S.phase = 'ending';
   S.over = { kind: 'bad', name: name };
-  S.dex[name] = true;
+  S.dex[name] = 진단();            // 같은 엔딩을 다시 보면 덮어쓴다
   track('bad_ending', { name: name, day: S.day });
   log('배드엔딩 — ' + name + '.', 1);
   render(); save();
@@ -1090,7 +1211,7 @@ function fireEnding(node, treeName) {
   }
   S.phase = 'ending';
   S.over = { kind: 'good', name: name };
-  S.dex[name] = true;
+  S.dex[name] = 진단();
   track('good_ending', { name: name, day: S.day });
   log('엔딩 — ' + name + '.', 1);
   render(); save();
@@ -1101,7 +1222,7 @@ function buyEstate() {
   S.money -= CFG.부동산가;
   S.phase = 'ending';
   S.over = { kind: 'good', name: '건물주' };
-  S.dex['건물주'] = true;
+  S.dex['건물주'] = 진단();
   track('good_ending', { name: '건물주', day: S.day });
   log('부동산 구매. 건물주 엔딩.', 1);
   render(); save();
@@ -1346,9 +1467,18 @@ function renderSkill() {
   return h;
 }
 
+// 도감 맨 위 총평 줄
+function 총평줄(dex) {
+  const t = 총평(dex || {});
+  if (!t) return '';
+  return '<div class="verdict">당신은 <b>' + esc(t.이름) + '</b> 입니다'
+       + '<span class="cnt">기록된 ' + t.기록수 + '개 중 ' + t.수 + '번</span></div>';
+}
+
 function renderDex() {
   const got = DEX_ALL.filter(d => S.dex[d]).length;
   let h = '<h3>엔딩 도감 <span style="float:right;font-weight:normal">' + got + ' / ' + DEX_ALL.length + '</span></h3>';
+  h += 총평줄(S.dex);
   if (got >= DEX_ALL.length) h += '<p class="big">도감 완성</p>';
   h += '<div class="dex">';
   DEX_ALL.forEach(d => {
@@ -1379,6 +1509,16 @@ function renderSet() {
     + '</table>';
 }
 
+// 엔딩 화면의 유형 박스 — 방금 도감에 박제된 진단을 그대로 보여준다
+function 유형박스() {
+  const v = 유형풀이(S.dex[(S.over || {}).name]);
+  if (!v) return '';
+  const 줄 = [v.꼬리, v.끝].filter(Boolean);
+  return '<div class="typebox"><div class="typename">' + esc(v.이름) + '</div>'
+       + (줄.length ? '<div class="typesub">' + esc(줄.join('  ·  ')) + '</div>' : '')
+       + '</div>';
+}
+
 function renderEnding() {
   const o = S.over;
   if (o.kind === 'bad') {
@@ -1386,6 +1526,7 @@ function renderEnding() {
       + '<div class="big">' + esc(o.name) + '</div>'
       + '<div class="sub">"안녕 나는 직장인이었던 유령인데 ' + esc(o.name) + '여서 죽었어.\n'
       + '다시 직장생활을 하면 잘 할 수 있을 것 같아.\n한번 더 도전해보고싶어."</div>'
+      + 유형박스()
       + '<table>' + row('생존', 'D' + S.day) + row('이번 회차 획득 SP', S.earned)
       + row('환생 시 보유 SP', Math.floor(S.bank + S.earned)) + '</table>'
       + '<div class="btnrow"><button data-re="1">환생하기</button>'
@@ -1394,6 +1535,7 @@ function renderEnding() {
   }
   return endImgTag(o.name)
     + '<div class="big">' + esc(o.name) + '</div>'
+    + 유형박스()
     + '<table>' + row('생존', 'D' + S.day) + row('소지금', won(S.money)) + '</table>'
     + '<div class="btnrow"><button data-re="0">새 인생 시작</button></div>'
     + '<div class="btnrow"><button data-card="open">결과 공유하기</button></div>';
@@ -1449,7 +1591,7 @@ function renderIntro() {
 
 /* 실제 새 게임 시작 — 인트로가 있으면 그 끝에서, 없으면 새로하기 에서 바로 부른다 */
 function startNewGame() {
-  localStorage.removeItem(KEY);
+  저장삭제();
   S = newRun(0, {}); log('입사. 기수 시작.'); morning();
   track('game_start', { resumed: 0, day: 1 });
   SCREEN = 'game'; TAB = 'main'; render(); save();
@@ -1459,7 +1601,8 @@ function renderTitleDex() {
   const st = loadRaw() || { dex: {} };
   const got = DEX_ALL.filter(d => st.dex[d]).length;
   let h = '<h3>엔딩 도감 <span style="float:right;font-weight:normal">'
-        + got + ' / ' + DEX_ALL.length + '</span></h3><div class="dex">';
+        + got + ' / ' + DEX_ALL.length + '</span></h3>'
+        + 총평줄(st.dex) + '<div class="dex">';
   DEX_ALL.forEach(d => {
     h += dexCell(d, !!st.dex[d]);
   });
@@ -1531,6 +1674,18 @@ function openDexPop(name, got) {
   let h = '<h2>' + (got ? esc(name) : '???') + '</h2>';
   const src = got ? endSrc(name) : '';
   if (src) h += '<img class="popimg" src="' + src + '" alt="" onerror="this.remove()">';
+  if (got) {
+    const v = 유형풀이(((S && S.dex) || (loadRaw() || { dex: {} }).dex || {})[name]);
+    h += '<div class="typebox">';
+    if (v) {
+      h += '<div class="typename">' + esc(v.이름) + '</div>';
+      const 줄 = [v.꼬리, v.끝].filter(Boolean);
+      if (줄.length) h += '<div class="typesub">' + esc(줄.join('  ·  ')) + '</div>';
+    } else {
+      h += '<div class="typesub">유형 기록 없음<br>다시 달성하면 기록됩니다</div>';
+    }
+    h += '</div>';
+  }
   h += '<div class="condlbl">획득 조건</div>';
   h += '<div class="desc">' + esc(info ? info.cond() : '조건 미기재') + '</div>';
   h += '<div class="opts"><button data-dexclose="1">닫기</button></div>';
@@ -1584,29 +1739,37 @@ function 카드그리기(mode, cb) {
   c.fillText('직장에서 살아남기', CARD / 2, 92);
   c.fillRect(CARD / 2 - 90, 112, 180, 3);
 
+  /* 아래 y 값은 전부 고정이다. 누적해서 내리면 이름 길이에 따라
+     하단 주소와 겹친다(2026-09-09 실측). 이름은 한 줄로만 쓰고 폭에 맞춰 줄인다. */
   const 마무리 = () => {
-    // 엔딩 이름 — 길면 줄여서 두 줄까지
-    let size = 84;
+    let size = 72;
     c.font = 카드폰트('bold ' + size + 'px');
-    while (c.measureText(이름).width > CARD - 140 && size > 40) {
-      size -= 4; c.font = 카드폰트('bold ' + size + 'px');
+    while (c.measureText(이름).width > CARD - 140 && size > 28) {
+      size -= 2; c.font = 카드폰트('bold ' + size + 'px');
     }
-    const 이름줄 = 줄나눔(c, 이름, CARD - 140);
-    이름줄.forEach((l, i) => c.fillText(l, CARD / 2, 800 + i * (size + 10)));
+    c.fillText(이름, CARD / 2, 760);
 
-    // 기록
-    c.font = 카드폰트('34px');
+    const v = 유형풀이(S.dex[이름]);
+    if (v) {
+      c.font = 카드폰트('bold 38px');
+      c.fillText(v.이름, CARD / 2, 826);
+      const 줄 = [v.꼬리, v.끝].filter(Boolean);
+      if (줄.length) {
+        c.fillStyle = '#555'; c.font = 카드폰트('24px');
+        c.fillText(줄.join('  ·  '), CARD / 2, 862);
+        c.fillStyle = '#000';
+      }
+    }
+
+    c.font = 카드폰트('28px');
     const 기록 = o.kind === 'bad'
       ? 'D' + S.day + ' 생존  ·  획득 SP ' + S.earned
       : 'D' + S.day + ' 생존  ·  ' + won(S.money);
-    c.fillText(기록, CARD / 2, 800 + 이름줄.length * (size + 10) + 34);
+    c.fillText(기록, CARD / 2, v ? 916 : 830);
 
-    // 도감 진행률
-    c.font = 카드폰트('30px');
-    c.fillText('엔딩 도감  ' + got + ' / ' + DEX_ALL.length, CARD / 2,
-               800 + 이름줄.length * (size + 10) + 84);
+    c.font = 카드폰트('26px');
+    c.fillText('엔딩 도감  ' + got + ' / ' + DEX_ALL.length, CARD / 2, v ? 956 : 872);
 
-    // 하단 주소
     c.fillStyle = '#555'; c.font = 카드폰트('26px');
     c.fillText('minmi0123.github.io/salaryman-survival', CARD / 2, CARD - 48);
     cb(cv);
@@ -1616,12 +1779,20 @@ function 카드그리기(mode, cb) {
   if (mode === 'dex') {
     c.font = 카드폰트('bold 56px');
     c.fillText('엔딩 도감', CARD / 2, 190);
-    c.font = 카드폰트('bold 72px');
-    c.fillText(got + ' / ' + DEX_ALL.length, CARD / 2, 272);
+    c.font = 카드폰트('bold 66px');
+    c.fillText(got + ' / ' + DEX_ALL.length, CARD / 2, 262);
+    const t = 총평(dex);
+    if (t) {
+      c.font = 카드폰트('bold 40px');
+      c.fillText('당신은 ' + t.이름, CARD / 2, 316);
+      c.fillStyle = '#666'; c.font = 카드폰트('24px');
+      c.fillText('기록된 ' + t.기록수 + '개 중 ' + t.수 + '번', CARD / 2, 348);
+      c.fillStyle = '#000';
+    }
 
-    const 여백 = 70, 간격 = 10, 열 = 3, 행 = 7;
+    const 여백 = 70, 간격 = 10, 열 = 3;
     const 폭 = (CARD - 여백 * 2 - 간격 * (열 - 1)) / 열;
-    const 높 = 84, 시작 = 320;
+    const 높 = 74, 시작 = 총평(dex) ? 378 : 330;
     DEX_ALL.forEach((d, i) => {
       const cx = 여백 + (i % 열) * (폭 + 간격);
       const cy = 시작 + Math.floor(i / 열) * (높 + 간격);
@@ -1652,7 +1823,7 @@ function 카드그리기(mode, cb) {
   }
   const im = new Image();
   im.onload = () => {
-    const box = 560, x = (CARD - box) / 2, y = 170;
+    const box = 520, x = (CARD - box) / 2, y = 165;
     c.save();
     c.strokeStyle = '#000'; c.lineWidth = 4;
     c.drawImage(im, x, y, box, box);
@@ -1783,6 +1954,8 @@ document.addEventListener('click', e => {
     if (a === 'continue') {
       S = load();
       if (!S) { render(); return; }
+      // 유형 진단 이전에 저장된 회차에는 집계가 없다
+      if (!S.tally) S.tally = { 정공법: 0, 요령: 0, 탈출: 0, 버티기: 0, 관리: 0, 기회: 0 };
       if (S.ev) { S.phase = 'play'; S.ev = null; }
       track('game_resume', { day: S.day });
       SCREEN = 'game'; TAB = 'main'; render(); return;
@@ -1877,7 +2050,7 @@ document.addEventListener('click', e => {
   if (t.dataset.re !== undefined) { restart(t.dataset.re === '1'); return; }
   if (t.dataset.reset) {
     if (confirm('저장 데이터를 전부 지웁니다.')) {
-      localStorage.removeItem(KEY); S = newRun(0, {}); log('입사. 기수 시작.'); morning();
+      저장삭제(); S = newRun(0, {}); log('입사. 기수 시작.'); morning();
       TAB = 'main'; render(); save();
     }
     return;
@@ -1893,13 +2066,13 @@ window.__game = {
   effect: c => effect(c),
   get screen() { return SCREEN; },
   set screen(v) { SCREEN = v; render(); },
-  reset: () => { localStorage.removeItem(KEY); S = newRun(0, {}); log('입사. 기수 시작.'); morning();
+  reset: () => { 저장삭제(); S = newRun(0, {}); log('입사. 기수 시작.'); morning();
                  SCREEN = 'game'; TAB = 'main'; render(); save(); },
   setSkill: (id, lv) => { S.skills[id] = lv; render(); save(); },
   giveSp: n => { S.sp += n; render(); save(); },
   giveMoney: n => { S.money += n; render(); save(); },
   stats: () => { try { return JSON.parse(localStorage.getItem(SKEY) || '{}'); } catch (e) { return {}; } },
-  statsReset: () => { localStorage.removeItem(SKEY); return 'ok'; },
+  statsReset: () => { try { localStorage.removeItem(SKEY); } catch (e) {} return 'ok'; },
   log: () => S.log.map(l => l.t),      // 화면에서는 뺐지만 QA·디버깅용으로 유지
   dev: on => {
     try { localStorage.setItem(DEVKEY, on ? '1' : '0'); } catch (e) {}
