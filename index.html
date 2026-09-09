@@ -170,6 +170,9 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 #intro button{border:1.5px solid #000;background:#fff;padding:13px;font:inherit;
               font-size:15px;font-weight:bold;cursor:pointer;width:100%;max-width:280px}
 .condlbl{font-size:11px;color:#666;margin-bottom:6px;text-align:center}
+.cardimg{display:block;width:100%;max-width:300px;margin:0 auto 6px;border:1px solid #000}
+.cardurl{text-align:center;font-size:11.5px;color:#555;margin:8px 0 12px;word-break:break-all;
+         user-select:all;-webkit-user-select:all}
 
 /* ── 시작화면 ── */
 #title{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -1352,6 +1355,7 @@ function renderDex() {
     h += dexCell(d, !!S.dex[d]);
   });
   h += '</div>';
+  h += '<div class="btnrow"><button data-card="dex">도감 공유하기</button></div>';
   return h;
 }
 
@@ -1385,12 +1389,14 @@ function renderEnding() {
       + '<table>' + row('생존', 'D' + S.day) + row('이번 회차 획득 SP', S.earned)
       + row('환생 시 보유 SP', Math.floor(S.bank + S.earned)) + '</table>'
       + '<div class="btnrow"><button data-re="1">환생하기</button>'
-      + '<button data-re="0">처음부터하기</button></div>';
+      + '<button data-re="0">처음부터하기</button></div>'
+      + '<div class="btnrow"><button data-card="open">결과 공유하기</button></div>';
   }
   return endImgTag(o.name)
     + '<div class="big">' + esc(o.name) + '</div>'
     + '<table>' + row('생존', 'D' + S.day) + row('소지금', won(S.money)) + '</table>'
-    + '<div class="btnrow"><button data-re="0">새 인생 시작</button></div>';
+    + '<div class="btnrow"><button data-re="0">새 인생 시작</button></div>'
+    + '<div class="btnrow"><button data-card="open">결과 공유하기</button></div>';
 }
 
 function renderTabs() {
@@ -1457,7 +1463,8 @@ function renderTitleDex() {
   DEX_ALL.forEach(d => {
     h += dexCell(d, !!st.dex[d]);
   });
-  h += '</div><div class="btnrow"><button data-title="back">← 시작화면</button></div>';
+  h += '</div><div class="btnrow"><button data-card="dex">도감 공유하기</button>'
+     + '<button data-title="back">← 시작화면</button></div>';
   return h;
 }
 
@@ -1534,6 +1541,216 @@ function openDexPop(name, got) {
 function closeDexPop() { $('overlay').classList.remove('on'); DEXPOP = null; }
 
 /* ══════════════════════════════════════════════════════════════
+   결과 공유 카드 — canvas 로 그린다. 외부 라이브러리 없음.
+   1080x1080 정사각 (카톡·인스타·X 어디서나 잘리지 않는 비율)
+   ══════════════════════════════════════════════════════════════ */
+const CARD = 1080;
+const SHARE_URL = 'https://minmi0123.github.io/salaryman-survival/';
+const 카드폰트 = w => w + ' "Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif';
+
+// 긴 글을 폭에 맞춰 줄바꿈
+function 줄나눔(ctx, text, maxW) {
+  const out = [];
+  text.split('\n').forEach(para => {
+    let line = '';
+    para.split('').forEach(ch => {
+      if (ctx.measureText(line + ch).width > maxW && line) { out.push(line); line = ch; }
+      else line += ch;
+    });
+    out.push(line);
+  });
+  return out;
+}
+
+/* 카드를 그려 canvas 를 콜백으로 넘긴다.
+   그림은 비동기 로드라 콜백을 쓴다. 그림이 없거나 실패해도 카드는 나온다. */
+function 카드그리기(mode, cb) {
+  const cv = document.createElement('canvas');
+  cv.width = CARD; cv.height = CARD;
+  const c = cv.getContext('2d');
+  const o = (mode === 'end' && S && S.over) ? S.over : {};
+  const 이름 = o.name || '';
+  // 도감은 시작화면(S === null)에서도 열리므로 저장본에서 직접 읽는다
+  const dex = (S && S.dex) || (loadRaw() || { dex: {} }).dex || {};
+  const got = DEX_ALL.filter(d => dex[d]).length;
+
+  c.fillStyle = '#fff'; c.fillRect(0, 0, CARD, CARD);
+  c.strokeStyle = '#000'; c.lineWidth = 10;
+  c.strokeRect(5, 5, CARD - 10, CARD - 10);
+  c.fillStyle = '#000'; c.textAlign = 'center';
+
+  // 상단 제목
+  c.font = 카드폰트('bold 40px');
+  c.fillText('직장에서 살아남기', CARD / 2, 92);
+  c.fillRect(CARD / 2 - 90, 112, 180, 3);
+
+  const 마무리 = () => {
+    // 엔딩 이름 — 길면 줄여서 두 줄까지
+    let size = 84;
+    c.font = 카드폰트('bold ' + size + 'px');
+    while (c.measureText(이름).width > CARD - 140 && size > 40) {
+      size -= 4; c.font = 카드폰트('bold ' + size + 'px');
+    }
+    const 이름줄 = 줄나눔(c, 이름, CARD - 140);
+    이름줄.forEach((l, i) => c.fillText(l, CARD / 2, 800 + i * (size + 10)));
+
+    // 기록
+    c.font = 카드폰트('34px');
+    const 기록 = o.kind === 'bad'
+      ? 'D' + S.day + ' 생존  ·  획득 SP ' + S.earned
+      : 'D' + S.day + ' 생존  ·  ' + won(S.money);
+    c.fillText(기록, CARD / 2, 800 + 이름줄.length * (size + 10) + 34);
+
+    // 도감 진행률
+    c.font = 카드폰트('30px');
+    c.fillText('엔딩 도감  ' + got + ' / ' + DEX_ALL.length, CARD / 2,
+               800 + 이름줄.length * (size + 10) + 84);
+
+    // 하단 주소
+    c.fillStyle = '#555'; c.font = 카드폰트('26px');
+    c.fillText('minmi0123.github.io/salaryman-survival', CARD / 2, CARD - 48);
+    cb(cv);
+  };
+
+  // ── 도감 카드 ──
+  if (mode === 'dex') {
+    c.font = 카드폰트('bold 56px');
+    c.fillText('엔딩 도감', CARD / 2, 190);
+    c.font = 카드폰트('bold 72px');
+    c.fillText(got + ' / ' + DEX_ALL.length, CARD / 2, 272);
+
+    const 여백 = 70, 간격 = 10, 열 = 3, 행 = 7;
+    const 폭 = (CARD - 여백 * 2 - 간격 * (열 - 1)) / 열;
+    const 높 = 84, 시작 = 320;
+    DEX_ALL.forEach((d, i) => {
+      const cx = 여백 + (i % 열) * (폭 + 간격);
+      const cy = 시작 + Math.floor(i / 열) * (높 + 간격);
+      const 획득 = !!dex[d];
+      c.strokeStyle = '#000'; c.lineWidth = 획득 ? 3 : 2;
+      if (!획득) c.setLineDash([7, 6]);
+      c.strokeRect(cx, cy, 폭, 높);
+      c.setLineDash([]);
+      c.fillStyle = 획득 ? '#000' : '#aaa';
+      let 글 = 획득 ? d : '???', size = 26;
+      c.font = 카드폰트('bold ' + size + 'px');
+      while (c.measureText(글).width > 폭 - 16 && size > 13) {
+        size -= 1; c.font = 카드폰트('bold ' + size + 'px');
+      }
+      c.fillText(글, cx + 폭 / 2, cy + 높 / 2 + size / 3);
+    });
+    c.fillStyle = '#555'; c.font = 카드폰트('26px');
+    c.fillText('minmi0123.github.io/salaryman-survival', CARD / 2, CARD - 48);
+    return cb(cv);
+  }
+
+  const src = endSrc(이름);
+  if (!src) {
+    // 그림이 없으면 자리를 비우고 이름을 위로 올린다
+    c.font = 카드폰트('bold 300px');
+    c.fillText('…', CARD / 2, 500);
+    return 마무리();
+  }
+  const im = new Image();
+  im.onload = () => {
+    const box = 560, x = (CARD - box) / 2, y = 170;
+    c.save();
+    c.strokeStyle = '#000'; c.lineWidth = 4;
+    c.drawImage(im, x, y, box, box);
+    c.strokeRect(x, y, box, box);
+    c.restore();
+    마무리();
+  };
+  im.onerror = 마무리;
+  im.src = src;
+}
+
+/* ── 공유 팝업 ──
+   file:// 로 열면 canvas 가 오염돼(tainted) 이미지를 못 뽑는다.
+   배포본(https)에서는 정상. 그 경우 안내 문구로 대체한다. */
+let SHAREPOP = false;
+
+function openSharePop(mode) {
+  SHAREPOP = true;
+  const 제목 = mode === 'dex' ? '도감 카드' : '결과 카드';
+  $('pop').innerHTML = '<h2>' + 제목 + '</h2><div class="desc">만드는 중…</div>';
+  $('overlay').classList.add('on');
+  window.__cardmode = mode;
+
+  카드그리기(mode, cv => {
+    let url = '';
+    try { url = cv.toDataURL('image/png'); } catch (e) { url = ''; }
+
+    let h = '<h2>' + 제목 + '</h2>';
+    if (url) {
+      h += '<img class="cardimg" src="' + url + '" alt="결과 카드">';
+      h += '<div class="taphint">이미지를 길게 눌러도 저장됩니다</div>';
+    } else {
+      h += '<div class="desc">이 카드는 배포된 주소에서만 저장됩니다.'
+         + SEP + '(파일을 직접 열면 브라우저가 이미지 추출을 막습니다)</div>';
+    }
+    // 복사가 막힌 환경(구형·http)에서도 손으로 옮길 수 있게 주소를 보여준다
+    h += '<div class="cardurl">' + SHARE_URL + '</div>';
+    h += '<div class="opts">';
+    if (url) h += '<button data-card="save">이미지 저장</button>';
+    h += '<button data-card="link">링크 복사</button>';
+    h += '<button data-card="close">닫기</button>';
+    h += '</div>';
+    $('pop').innerHTML = h;
+    window.__card = cv;                       // 저장 버튼이 쓴다
+  });
+}
+function closeSharePop() {
+  $('overlay').classList.remove('on'); SHAREPOP = false; window.__card = null;
+}
+
+// 이미지 저장 — 기기마다 되는 방법이 달라 순서대로 시도한다
+function 카드저장() {
+  const cv = window.__card;
+  if (!cv) return;
+  const 파일명 = '직장에서살아남기_'
+    + (window.__cardmode === 'dex' ? '도감'
+       : ((S && S.over && S.over.name) || '결과')) + '.png';
+  cv.toBlob(blob => {
+    if (!blob) return;
+    const file = new File([blob], 파일명, { type: 'image/png' });
+    // ① 모바일 공유 시트 (iOS·안드로이드) — 사진 앱 저장·카톡 전송이 여기서 된다
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: '직장에서 살아남기' }).catch(() => {});
+      return;
+    }
+    // ② 데스크톱 — 다운로드
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 파일명;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, 'image/png');
+}
+
+// 링크 복사 — clipboard API 가 막힌 환경(구형·http)에서는 textarea 로 우회
+function 링크복사(btn) {
+  const done = (ok) => {
+    if (!btn) return;
+    btn.textContent = (ok === false) ? '아래 주소를 복사하세요' : '복사됨';
+    setTimeout(() => { btn.textContent = '링크 복사'; }, 1800);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(SHARE_URL).then(() => done(true)).catch(() => 우회복사(done));
+  } else 우회복사(done);
+}
+function 우회복사(done) {
+  let ok = false;
+  try {
+    const t = document.createElement('textarea');
+    t.value = SHARE_URL; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select();
+    ok = document.execCommand('copy');
+    t.remove();
+  } catch (e) { ok = false; }
+  done(ok);
+}
+
+/* ══════════════════════════════════════════════════════════════
    5. EVENTS
    ══════════════════════════════════════════════════════════════ */
 /* 아무 곳이나 탭해서 닫기 — tapAny 팝업(취침)만. 첫 선택지를 실행한다 */
@@ -1541,6 +1758,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('button')) return;              // 버튼 클릭은 아래 핸들러가 처리
   const ov = document.getElementById('overlay');
   if (!ov || !ov.classList.contains('on')) return;
+  if (SHAREPOP) { closeSharePop(); return; }   // 공유 팝업도 바깥 탭으로 닫는다
   if (DEXPOP) { closeDexPop(); return; }       // 도감 팝업은 바깥 탭으로 닫는다
   const ev = S && S.ev;                        // 시작화면에서는 S 가 null 이다
   if (!ev || !ev.tapAny || !ev.opts || !ev.opts[0]) return;
@@ -1576,6 +1794,15 @@ document.addEventListener('click', e => {
   if (t.dataset.intro) {
     if (t.dataset.intro === 'next') { INTRO++; render(); return; }
     startNewGame(); return;
+  }
+  if (t.dataset.card) {
+    const a = t.dataset.card;
+    if (a === 'open')  { openSharePop('end'); return; }
+    if (a === 'dex')   { openSharePop('dex'); return; }
+    if (a === 'save')  { 카드저장(); return; }
+    if (a === 'link')  { 링크복사(t); return; }
+    if (a === 'close') { closeSharePop(); return; }
+    return;
   }
   if (t.dataset.dexclose) { closeDexPop(); return; }
   if (t.dataset.dex) {
