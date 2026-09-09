@@ -625,6 +625,11 @@ let S = null;
 let TAB = 'main';
 let SCREEN = 'title';        // 'title' | 'titledex' | 'intro' | 'game'
 let INTRO = 0;               // 인트로에서 몇 번째 장을 보고 있나
+/* 인트로가 끝나면 무엇을 할지 — 오는 길이 두 가지다.
+   'new'      시작화면 [새로하기].  저장을 지우고 처음부터 (도감도 사라진다)
+   'restart'  엔딩의 [새 인생 시작] / [처음부터하기].  SP 만 버리고 도감은 남긴다
+   둘을 같은 함수로 처리하면 도감이 날아간다. */
+let INTROAFTER = 'new';
 
 /* ── 측정 ──────────────────────────────────────────────
    로컬 집계는 항상. GA4 전송은 GA_ID 가 있고 개발자모드가 아닐 때만.
@@ -1948,7 +1953,9 @@ document.addEventListener('click', e => {
     if (a === 'new') {
       if (loadRaw() && !confirm('진행 중인 기록과 엔딩 도감이 모두 사라집니다. 새로 시작할까요?')) return;
       // 저장 삭제는 인트로가 끝난 뒤에 한다 — 도중에 창을 닫아도 기록이 남는다
-      if (IMG.intro && IMG.intro.length) { INTRO = 0; SCREEN = 'intro'; render(); return; }
+      if (IMG.intro && IMG.intro.length) {
+        INTROAFTER = 'new'; INTRO = 0; SCREEN = 'intro'; render(); return;
+      }
       startNewGame(); return;
     }
     if (a === 'continue') {
@@ -1966,6 +1973,7 @@ document.addEventListener('click', e => {
 
   if (t.dataset.intro) {
     if (t.dataset.intro === 'next') { INTRO++; render(); return; }
+    if (INTROAFTER === 'restart') { SCREEN = 'game'; restart(false); return; }
     startNewGame(); return;
   }
   if (t.dataset.card) {
@@ -2047,7 +2055,13 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (t.dataset.re !== undefined) { restart(t.dataset.re === '1'); return; }
+  if (t.dataset.re !== undefined) {
+    // 환생(re=1)은 인트로를 거치지 않는다. 죽을 때마다 프롤로그를 보면 방해된다
+    if (t.dataset.re === '0' && IMG.intro && IMG.intro.length) {
+      INTROAFTER = 'restart'; INTRO = 0; SCREEN = 'intro'; render(); return;
+    }
+    restart(t.dataset.re === '1'); return;
+  }
   if (t.dataset.reset) {
     if (confirm('저장 데이터를 전부 지웁니다.')) {
       저장삭제(); S = newRun(0, {}); log('입사. 기수 시작.'); morning();
