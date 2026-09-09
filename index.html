@@ -219,7 +219,7 @@ const CFG = {
   시작금: 30000, 주급: 100000, 월세: 140000,
   지각확률: 0.25, 발각확률: 0.25,
   SP율: 0.5,
-  월세임계: 2, 게이지임계: 3, 회사경고임계: 3,
+  월세임계: 2, 게이지임계: 3, 총경고임계: 3,
   아이템회복: 40,
   엔딩돈: 150000,
   부동산가: 300000,
@@ -464,7 +464,7 @@ const ENDINFO = {
   '백수': { img: 'end20.png', cond: () => '월세 미납 ' + CFG.월세임계 + '회' },
   '짤림': { img: 'end21.png',
             cond: () => '업무 고갈 ' + CFG.게이지임계 + '회' + SEP
-                      + '또는 회사 경고(지각·발각) ' + CFG.회사경고임계 + '회' },
+                      + '또는 총 경고 ' + CFG.총경고임계 + '회 (모든 경고 합산)' },
 };
 
 // 엔딩 그림 경로. endDir 가 비어 있으면 '' 를 돌려줘 아예 부르지 않는다
@@ -787,7 +787,7 @@ function pick(c) {
         { t: '시간멈추기 사용', need: () => S.items.시간멈추기 > 0,
           run: () => { S.items.시간멈추기--; log('시간멈추기 사용. 지각 방어.');
                        S.lastDelta = '시간멈추기 사용 · 지각 방어'; } },
-        { t: '지각한다 · 회사 경고 +1',
+        { t: '지각한다 · 경고 +1',
           run: () => { S.late = true; log('지각. 오전업무 3h → 1h.', 1); addWarn(null);
                        S.lastDelta = '지각 · 오전업무 3h → 1h · 경고 +1'; } },
       ]
@@ -802,20 +802,22 @@ function pick(c) {
     return openEvent({
       title: '발각',
       desc: '"00씨 일 안하나!"' + SEP + SEP + '딴짓하다 걸렸습니다.' + SEP
-          + '회사 경고 +1  (' + S.warn + ' / ' + CFG.회사경고임계 + ')',
+          + '경고 +1  (' + S.warn + ' / ' + CFG.총경고임계 + ')',
       opts: [{ t: '...죄송합니다', run: function () {} }]
     });
   }
   afterAction();
 }
 
-// 경고 추가
-//   g = '멘탈'|'건강'|'업무'|'돈'  → 게이지 고갈. 해당 축 카운터만 오른다
-//   g = null                        → 회사 경고(지각·발각). S.warn 만 오른다
-// 둘을 한 카운터에 섞으면 축이 골고루 터질 때 합계가 먼저 닿아
-// 모든 죽음이 '짤림' 으로 수렴한다 (2026-09-02 측정: 1회차 12/12 짤림).
+// 경고 추가 — g: '멘탈'|'건강'|'업무'|'돈'|null(순손해)
+//
+// 모든 경고가 S.warn 한 카운터에 합산된다. 축별 카운터도 같이 돌지만
+// 축이 골고루 닳으면 합계가 먼저 닿아 '짤림' 으로 끝난다.
+// 2026-09-02 에 축별 분리로 바꿨다가 2026-09-09 되돌렸다 —
+// 분리하면 죽는 데 너무 오래 걸려 배드엔딩으로 SP 를 쌓기 어렵고,
+// 힘든 상태가 계속 이어져 재미가 떨어진다는 플레이 피드백.
 function addWarn(g) {
-  if (!g) S.warn++;
+  S.warn++;
   if (g === '멘탈') { S.wm++; S.m = 100; }
   if (g === '건강') { S.wh++; S.h = 100; }
   if (g === '업무') { S.wk++; S.work = 0; }
@@ -825,7 +827,7 @@ function addWarn(g) {
   if (g && cnt >= lim) {
     return badEnd({ 멘탈: '퇴사', 건강: '아사', 업무: '짤림', 돈: '백수' }[g]);
   }
-  if (!g && S.warn >= CFG.회사경고임계) return badEnd('짤림');
+  if (S.warn >= CFG.총경고임계) return badEnd('짤림');
 }
 
 // 아이템 사용 — 이벤트/상시 공용. 부작용 포함, 제조 스킬로 제거
@@ -868,7 +870,7 @@ function checkGauges() {
       opts: [
         { t: '담배 피기', need: () => S.items.담배 > 0,
           run: () => { useItem('담배'); } },
-        { t: '버틴다 · 퇴사 경고 +1  「' + 경고대사.멘탈[Math.min(S.wm, 2)] + '」',
+        { t: '버틴다 · 경고 +1  「' + 경고대사.멘탈[Math.min(S.wm, 2)] + '」',
           run: () => { log('팀장님 상담. 멘탈 강제회복. 경고 +1.', 1); addWarn('멘탈'); } },
       ]
     });
@@ -879,7 +881,7 @@ function checkGauges() {
       opts: [
         { t: '약 먹기', need: () => S.items.약 > 0,
           run: () => { useItem('약'); } },
-        { t: '버틴다 · 아사 경고 +1  「' + 경고대사.건강[Math.min(S.wh, 2)] + '」',
+        { t: '버틴다 · 경고 +1  「' + 경고대사.건강[Math.min(S.wh, 2)] + '」',
           run: () => { log('병원 다녀옴. 건강 강제회복. 경고 +1.', 1); addWarn('건강'); } },
       ]
     });
@@ -1037,7 +1039,7 @@ function settle() {
         if (S.money >= rent) { S.money -= rent; log('월세 납부. 경고 없음.'); }
         else { log('월세 미납. 경고 +1.', 1); addWarn('돈'); }
       }});
-    opts.push({ t: '못 낸다 · 백수 경고 +1  「' + 경고대사.돈[Math.min(S.wmoney, 1)] + '」',
+    opts.push({ t: '못 낸다 · 경고 +1  「' + 경고대사.돈[Math.min(S.wmoney, 1)] + '」',
       run: () => { log('월세 미납. 경고 +1.', 1); addWarn('돈'); } });
     openEvent({ title: '월세 밀림', desc: '똑똑똑 월세내세용\n네 돈이없다구요??\n\n월세 ' + won(rent)
                                           + ' / 소지금 ' + won(S.money), opts: opts });
@@ -1143,14 +1145,14 @@ function gauge(nm, v, max, danger, over) {
 function renderBar() {
   const over = S.work > 100 ? Math.round(S.work - 100) : 0;
   let dots = '';
-  for (let i = 0; i < CFG.회사경고임계; i++) dots += (i < S.warn ? '●' : '○');
+  for (let i = 0; i < CFG.총경고임계; i++) dots += (i < S.warn ? '●' : '○');
   $('bar').innerHTML =
     '<div class="row1"><span>D' + S.day + ' ' + 요일[S.dow] + '요일 · ' + 직급() + '</span>'
     + '<span>' + won(S.money) + '</span></div>'
     + gauge('멘탈', S.m, 100, S.m <= 25)
     + gauge('건강', S.h, 100, S.h <= 25)
     + gauge('업무', Math.min(S.work, 100), 100, S.work > 80, over)
-    + '<div id="warnrow">회사경고 ' + dots + '  <span style="letter-spacing:0">(' + S.warn + '/' + CFG.회사경고임계
+    + '<div id="warnrow">경고 ' + dots + '  <span style="letter-spacing:0">(' + S.warn + '/' + CFG.총경고임계
     + ')  퇴사' + S.wm + ' 아사' + S.wh + ' 백수' + S.wmoney + ' 짤림' + S.wk
     + (M.카드최대() ? '  팀원카드 ' + S.card + '/' + M.카드최대() : '') + '</span></div>';
 }
@@ -1223,7 +1225,7 @@ function renderStatus() {
     + row('밀린 업무', Math.round(S.work) + (S.work > 100 ? ' (초과 ' + Math.round(S.work - 100) + ')' : ''))
     + '</table>'
     + '<h3>경고</h3><table>'
-    + row('회사 경고(지각·발각)', S.warn + ' / ' + CFG.회사경고임계)
+    + row('총 경고', S.warn + ' / ' + CFG.총경고임계)
     + row('멘탈(퇴사)', S.wm + ' / ' + CFG.게이지임계)
     + row('건강(아사)', S.wh + ' / ' + CFG.게이지임계)
     + row('업무(짤림)', S.wk + ' / ' + CFG.게이지임계)
