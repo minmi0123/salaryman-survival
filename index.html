@@ -169,6 +169,12 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
        color:inherit;text-align:left;cursor:pointer;width:100%}
 .dexit.no{color:#aaa;border-style:dashed}
 .dexit:active{background:#eee}
+/* 저장 안내 — 평소엔 점선으로 조용히, 저장이 막혔을 때만 실선+굵게.
+   화면이 흑백이라 색으로 경고를 못 준다. 테두리와 굵기로 구분한다. */
+.savenote{border:1px dashed #999;padding:9px 10px;margin-top:12px;
+          font-size:11.5px;color:#555;line-height:1.6;text-align:center}
+.savenote b{display:block;font-size:12.5px;color:#000;margin-bottom:3px}
+.savenote.warn{border:1.5px solid #000;color:#000}
 .verdict{border:2px solid #000;padding:10px;text-align:center;font-size:14px;margin-bottom:9px}
 .verdict b{font-size:16px}
 .verdict .cnt{display:block;font-size:11px;color:#666;margin-top:3px}
@@ -1669,6 +1675,7 @@ function renderDex() {
   });
   h += '</div>';
   h += '<div class="btnrow"><button data-card="dex">도감 공유하기</button></div>';
+  h += 저장안내();
   return h;
 }
 
@@ -1677,10 +1684,13 @@ function renderSet() {
     + row('취침 화면', (sleepScreenOn() ? '보기' : '건너뛰기')
         + ' <button data-opt="sleep" class="mini">' + (sleepScreenOn() ? '끄기' : '켜기') + '</button>')
     + '</table>'
-    + '<h3>설정</h3><table>'
+    + '<h3>저장</h3><table>'
+    + row('상태', 저장가능() ? '저장됨' : '저장 안 됨')
+    + row('위치', 'localStorage / ' + KEY)
     + row('스키마', 'v' + SCHEMA)
-    + row('저장', 'localStorage / ' + KEY)
-    + '</table><div class="btnrow"><button data-totitle="1">시작화면으로</button>'
+    + '</table>'
+    + 저장안내()
+    + '<div class="btnrow"><button data-totitle="1">시작화면으로</button>'
     + '<button data-reset="1">데이터 초기화</button></div>'
     + '<h3>수치</h3><table>'
     + row('P (시간당 처리량)', CFG.P)
@@ -1752,6 +1762,33 @@ function renderTitle() {
 }
 
 // 저장본을 파싱만 해서 반환 (S 를 건드리지 않는다)
+/* 이 브라우저에서 저장이 실제로 되나. 있다/없다를 묻지 말고 써봐야 안다 —
+   아이폰 프라이빗 브라우징은 localStorage 가 있는 척하면서 쓰기에서 예외를 던진다.
+   세션 중에 바뀔 일이 거의 없어 한 번만 재고 캐시한다. */
+let 저장가능캐시 = null;
+function 저장가능() {
+  if (저장가능캐시 !== null) return 저장가능캐시;
+  try {
+    localStorage.setItem(KEY + '__probe', '1');
+    localStorage.removeItem(KEY + '__probe');
+    저장가능캐시 = true;
+  } catch (e) { 저장가능캐시 = false; }
+  return 저장가능캐시;
+}
+
+/* 도감이 어디에 저장되고 언제 사라지는지. 도감·설정 세 곳에서 같은 문구를 쓴다.
+   21종을 모으는 게임인데 기기를 바꾸면 통째로 날아간다는 걸 아무도 모른다. */
+function 저장안내() {
+  if (!저장가능()) {
+    return '<div class="savenote warn"><b>지금 기록이 저장되지 않습니다</b>'
+         + '시크릿 · 프라이빗 모드에서는 도감이 남지 않습니다.<br>'
+         + '일반 창에서 열면 저장됩니다.</div>';
+  }
+  return '<div class="savenote"><b>기록은 이 브라우저에만 저장됩니다</b>'
+       + '기기나 브라우저를 바꾸면 도감이 보이지 않습니다.<br>'
+       + '방문 기록 · 사이트 데이터를 지워도 사라집니다.</div>';
+}
+
 function loadRaw() {
   try {
     const r = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -1791,6 +1828,7 @@ function renderTitleDex() {
   });
   h += '</div><div class="btnrow"><button data-card="dex">도감 공유하기</button>'
      + '<button data-title="back">← 시작화면</button></div>';
+  h += 저장안내();
   return h;
 }
 
