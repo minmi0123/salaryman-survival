@@ -104,7 +104,6 @@ body{background:#fff;color:#000;
              font:inherit;font-size:13px;cursor:pointer}
 #tabs button:last-child{border-right:none}
 #tabs button.on{background:#000;color:#fff;font-weight:bold}
-.note{text-align:center;font-size:11px;color:#555;padding:3px 0}
 
 /* ── 팝업 ── */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;
@@ -217,7 +216,6 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 <div id="app">
   <div id="bar"></div>
   <div id="screen"></div>
-  <div class="note" id="tabnote">아래 메뉴는 시간이 흐르지 않습니다</div>
   <div id="tabs"></div>
 </div>
 <div id="overlay"><div class="pop" id="pop"></div></div>
@@ -1800,7 +1798,6 @@ function render() {
   if (SCREEN !== 'game') {
     $('bar').style.display = 'none';
     $('tabs').style.display = 'none';
-    $('tabnote').style.display = 'none';
     setScreen(SCREEN === 'title' ? renderTitle()
             : SCREEN === 'intro' ? renderIntro()
             : renderTitleDex(),
@@ -1823,7 +1820,6 @@ function render() {
   if (TAB === 'main' && S.phase !== 'ending') body = renderStatusLink() + body;
   setScreen(body, 'game|' + TAB + '|' + S.phase);
   renderTabs();
-  $('tabnote').style.display = S.phase === 'ending' ? 'none' : '';
 }
 const renderStatusLink = () => '';
 
