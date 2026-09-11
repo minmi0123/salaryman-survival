@@ -1265,8 +1265,8 @@ function 이벤트효과(o) {
    누르기 전에 알 방법이 없다. 표기는 선택지 카드(멘+10 · 돈-3만)와 맞춘다. */
 function 효과줄(o) {
   const p = [];
-  if (o.m)     p.push('멘' + (o.m > 0 ? '+' : '') + o.m);
-  if (o.h)     p.push('건' + (o.h > 0 ? '+' : '') + o.h);
+  if (o.m)     p.push('멘' + 기호(o.m));
+  if (o.h)     p.push('건' + 기호(o.h));
   if (o.work)  p.push('업' + (o.work > 0 ? '+' : '') + o.work);
   if (o.money) p.push('돈' + sw(o.money));
   if (o.card)  p.push('카드' + (o.card > 0 ? '+' : '') + o.card);
@@ -1460,6 +1460,26 @@ function setScreen(html, key) {
 }
 const esc = s => String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
 const won = n => Math.round(n).toLocaleString() + '원';
+/* 게이지 변화를 숫자 대신 크기로 — boss 게임의 §4-6 규칙을 옮겼다.
+   "+8 / +3 이 나란히 있으면 읽는 데 품이 들고, 정확한 값은 어차피 판단에 안 쓰인다"
+
+   기호로 바꾸는 것은 멘탈·건강 뿐이다. 둘 다 0~100 게이지라 같은 자를 쓴다.
+   임계 10 = 게이지의 10%.
+
+   업무와 돈은 숫자로 남긴다 — boss 가 사람 수와 돈에 그은 것과 같은 선이다.
+   "지금 낼 수 있나 / 오늘 치를 처리할 수 있나" 를 가르는 계산 축이라
+   기호로 바꾸면 판단이 불가능해진다.
+     돈   소지금보다 비싼 선택지는 잠기고(돈부족), 주말마다 월세를 맞춰야 한다
+     업무  2~60 으로 30배 차이가 나 2단계에 안 담긴다. 완주 상태에서는 전부
+          업−− 가 되어 일하기(54)와 대놓고 놀기(32)가 같아 보였다 (2026-09-11 실측).
+          정확도가 떨어지는 정도가 아니라 이 게임의 핵심 트레이드오프가 사라진다.
+          상태 탭이 배정량·처리 가능·부족분을 숫자로 계산해 보여주는 축이기도 하다.
+
+   − 는 U+2212 마이너스다. ASCII 하이픈(-)보다 −− 가 훨씬 잘 읽힌다.
+   0 은 호출하는 쪽에서 전부 걸러낸다 (if (e.m) 식). */
+const 기호칸 = 10;
+const 기호 = v => v >= 기호칸 ? '++' : v > 0 ? '+' : v <= -기호칸 ? '−−' : '−';
+
 /* 돈을 짧게 — 선택지 카드와 이벤트 팝업이 같은 표기를 써야 읽는 눈이 안 흔들린다 */
 const sw = v => {
   const s = v > 0 ? '+' : '-', a = Math.abs(v);
@@ -1516,8 +1536,8 @@ function renderMain() {
     const lines = [];   // 데스크톱 툴팁용 (전체)
     const sh = [];      // 터치기기 카드용 (압축)
     if (e.work) { lines.push('업무 -' + e.work); sh.push('업-' + e.work); }
-    if (e.m) { lines.push('멘탈 ' + (e.m > 0 ? '+' : '') + e.m); sh.push('멘' + (e.m > 0 ? '+' : '') + e.m); }
-    if (e.h) { lines.push('건강 ' + (e.h > 0 ? '+' : '') + e.h); sh.push('건' + (e.h > 0 ? '+' : '') + e.h); }
+    if (e.m) { lines.push('멘탈 ' + 기호(e.m)); sh.push('멘' + 기호(e.m)); }
+    if (e.h) { lines.push('건강 ' + 기호(e.h)); sh.push('건' + 기호(e.h)); }
     if (e.money) { lines.push('돈 ' + (e.money > 0 ? '+' : '') + won(e.money)); sh.push('돈' + sw(e.money)); }
     if (e.card) { lines.push('팀원 카드 +1'); sh.push('카드+1'); }
     if (e.cardUse) { lines.push('팀원 카드 -' + e.cardUse); sh.push('카드-' + e.cardUse); }
