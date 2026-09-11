@@ -2021,7 +2021,9 @@ function openSharePop(mode) {
     let h = '<h2>' + 제목 + '</h2>';
     if (url) {
       h += '<img class="cardimg" src="' + url + '" alt="결과 카드">';
-      h += '<div class="taphint">이미지를 길게 눌러도 저장됩니다</div>';
+      // 공유가 안 되는 기기(주로 데스크톱)에서는 이게 이미지를 얻는 유일한 길이다
+      h += '<div class="taphint">이미지를 길게 누르면 저장됩니다'
+         + ' (PC 는 오른쪽 클릭)</div>';
     } else {
       h += '<div class="desc">이 카드는 배포된 주소에서만 저장됩니다.'
          + SEP + '(파일을 직접 열면 브라우저가 이미지 추출을 막습니다)</div>';
@@ -2029,20 +2031,35 @@ function openSharePop(mode) {
     // 복사가 막힌 환경(구형·http)에서도 손으로 옮길 수 있게 주소를 보여준다
     h += '<div class="cardurl">' + SHARE_URL + '</div>';
     h += '<div class="opts">';
-    if (url) h += '<button data-card="save">이미지 저장</button>';
+    // 공유를 지원하지 않으면 눌러도 아무 일이 없으므로 아예 안 그린다
+    if (url && 공유가능()) h += '<button data-card="share">이미지 공유</button>';
     h += '<button data-card="link">링크 복사</button>';
     h += '<button data-card="close">닫기</button>';
     h += '</div>';
     $('pop').innerHTML = h;
-    window.__card = cv;                       // 저장 버튼이 쓴다
+    window.__card = cv;                       // 공유 버튼이 쓴다
   });
 }
 function closeSharePop() {
   $('overlay').classList.remove('on'); SHAREPOP = false; window.__card = null;
 }
 
-// 이미지 저장 — 기기마다 되는 방법이 달라 순서대로 시도한다
-function 카드저장() {
+/* 이 기기에서 이미지 파일 공유가 되나.
+   실제 File 을 하나 만들어 물어봐야 정확하다 — navigator.share 만 있고
+   파일 공유는 안 되는 브라우저가 있다. 버튼은 될 때만 그린다. */
+function 공유가능() {
+  try {
+    if (!navigator.share || !navigator.canShare || typeof File === 'undefined') return false;
+    return navigator.canShare({ files: [new File([new Blob(['x'])], 'a.png', { type: 'image/png' })] });
+  } catch (e) { return false; }
+}
+
+/* 이미지 공유 — 공유 시트를 연다. 거기서 사진 저장·카톡 전송·메시지가 다 된다.
+   예전에는 공유가 안 되면 <a download> 로 내려받았는데, 같은 버튼이 기기마다
+   저장이 되기도 공유가 되기도 해서 뭐가 일어날지 알 수 없었다.
+   지금은 공유 하나만 한다. 내려받기는 브라우저 기본 동작(길게 누르기 ·
+   오른쪽 클릭)에 맡긴다. */
+function 카드공유() {
   const cv = window.__card;
   if (!cv) return;
   const 파일명 = '직장에서살아남기_'
@@ -2051,17 +2068,8 @@ function 카드저장() {
   cv.toBlob(blob => {
     if (!blob) return;
     const file = new File([blob], 파일명, { type: 'image/png' });
-    // ① 모바일 공유 시트 (iOS·안드로이드) — 사진 앱 저장·카톡 전송이 여기서 된다
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: '직장에서 살아남기' }).catch(() => {});
-      return;
-    }
-    // ② 데스크톱 — 다운로드
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 파일명;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    if (!navigator.canShare || !navigator.canShare({ files: [file] })) return;
+    navigator.share({ files: [file], title: '직장에서 살아남기' }).catch(() => {});
   }, 'image/png');
 }
 
@@ -2142,7 +2150,7 @@ document.addEventListener('click', e => {
     const a = t.dataset.card;
     if (a === 'open')  { openSharePop('end'); return; }
     if (a === 'dex')   { openSharePop('dex'); return; }
-    if (a === 'save')  { 카드저장(); return; }
+    if (a === 'share') { 카드공유(); return; }
     if (a === 'link')  { 링크복사(t); return; }
     if (a === 'close') { closeSharePop(); return; }
     return;
