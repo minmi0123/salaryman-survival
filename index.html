@@ -66,9 +66,14 @@ body{background:#fff;color:#000;
       align-items:center;justify-content:center}
 .card:active{background:#ddd}
 .card .t{display:block;font-weight:bold}
-.card .e{display:none;font-size:11.5px;color:#333;font-weight:normal;
+/* 선택지 수치·위험 배지 — 기본은 보인다(모바일 우선).
+   진짜 마우스 + 넓은 화면일 때만 숨기고 hover 툴팁으로 대신한다.
+   (hover:none) 한 줄에 기댔더니 스타일러스·마우스 연결·데스크톱 모드에서
+   조건이 뒤집혀 수치가 통째로 사라졌다 — 2026-09-02 c951e0e 와 같은 증상이
+   2026-09-11 에 재발했다. 애매한 기기에서는 '보이는 쪽' 으로 실패하게 둔다. */
+.card .e{display:block;font-size:11.5px;color:#333;font-weight:normal;
          margin-top:4px;letter-spacing:-.3px}
-.card .rk{display:none;font-size:11px;font-weight:bold}
+.card .rk{display:inline;font-size:11px;font-weight:bold}
 .card:disabled{opacity:.35;cursor:not-allowed}
 
 /* 미해금 — 흐리게가 아니라 점선 + 회색. 조건 문구가 읽혀야 하므로 */
@@ -77,19 +82,20 @@ body{background:#fff;color:#000;
 .card.lock .lk{display:block;font-size:11px;font-weight:normal;
                margin-top:5px;letter-spacing:-.3px;line-height:1.35}
 
-/* 데스크톱(hover 있음) — 제목만 + hover 툴팁 */
-@media (hover:hover){
-  .card:not(.lock):hover{background:#f0f0f0}
+/* 배경 반응은 어느 기기가 hover 를 보고하든 무해하므로 그대로 둔다 */
+@media (hover:hover){ .card:not(.lock):hover{background:#f0f0f0} }
+
+/* 데스크톱 — 진짜 마우스(pointer:fine) + 앱 폭(520px)보다 넓은 화면일 때만
+   수치를 감추고 hover 툴팁으로 바꾼다. 셋을 다 만족해야 해서
+   폰에서는 스타일러스·마우스가 붙어도 수치가 남는다. */
+@media (hover:hover) and (pointer:fine) and (min-width:560px){
+  .card .e{display:none}
+  .card .rk{display:none}
   .card[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;right:0;top:100%;
     z-index:30;background:#000;color:#fff;padding:7px 9px;font-size:11.5px;line-height:1.45;
     white-space:pre-line;border:1px solid #000;text-align:left;pointer-events:none}
   /* 마지막 줄은 아래가 스크롤 영역 밖이라 잘린다 → 위로 뒤집는다 */
   .cards .card[data-tip]:nth-last-child(-n+2):hover::after{top:auto;bottom:100%}
-}
-/* 터치기기(hover 없음) — 2줄 고정: 제목+위험 / 수치 */
-@media (hover:none){
-  .card .e{display:block}
-  .card .rk{display:inline}
 }
 
 /* ── 탭바 ── */
@@ -232,7 +238,9 @@ const CFG = {
   아이템회복: 40,
   엔딩돈: 150000,
   부동산가: 300000,
-  이벤트확률: 0.2,   // 발동 지점이 둘(기상·오전업무)이라 평일 기댓값은 0.4/일
+  이벤트확률: 0.2,       // 평일은 발동 지점이 둘(기상·오전업무)이라 기댓값 0.4/일
+  주말이벤트확률: 0.4,   // 주말은 기상 한 곳뿐이라 평일과 하루 기댓값을 맞춘다.
+                         // 0.2 로 두면 주말 전용(경조사·중고거래)이 회차당 0.05회꼴이라 거의 안 보인다
 };
 
 const 평일블록 = ['출근준비', '오전업무', '점심', '오후업무', '퇴근', '저녁'];
@@ -1206,7 +1214,7 @@ function afterSleep() {
    직전 2개는 후보에서 뺀다 — 같은 게 연달아 뜨면 랜덤으로 안 느껴진다. */
 function 이벤트뽑기(시점) {
   if (!S || S.phase !== 'play' || S.day <= 1) return null;   // 첫날은 깨끗하게 시작한다
-  if (Math.random() >= CFG.이벤트확률) return null;
+  if (Math.random() >= (isWeekend() ? CFG.주말이벤트확률 : CFG.이벤트확률)) return null;
   const pool = EVENTS.filter(e => e.at === 시점 && (isWeekend() ? e.e : e.w));
   if (!pool.length) return null;
   const recent = S.recentEv || [];                            // 옛 저장본에는 없다
