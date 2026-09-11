@@ -232,6 +232,7 @@ const CFG = {
   아이템회복: 40,
   엔딩돈: 150000,
   부동산가: 300000,
+  이벤트확률: 0.3,
 };
 
 const 평일블록 = ['출근준비', '오전업무', '점심', '오후업무', '퇴근', '저녁'];
@@ -656,6 +657,9 @@ const IMG = {
   intro: ['img/intro/inst01.png', 'img/intro/inst02.png', 'img/intro/inst03.png'],
   // 블록 그림 — 게임화면 선택지 위에 뜬다. 빈 문자열이면 그림 없이 동작한다.
   blockDir: 'img/blk/',
+  // 랜덤 이벤트 그림 — 아직 없다. 그리면 img/ev/ 에 EVENTS 의 id 로 넣고
+  // 여기를 'img/ev/' 로 바꾸면 한 번에 살아난다. 안 그린 것은 <img> 가 스스로 사라진다.
+  evDir: '',
 };
 
 /* 블록 → 그림 파일. 주말은 블록이 3개지만 그림은 요일 단위(토·일)라
@@ -713,6 +717,8 @@ function newRun(carrySp, dex) {
     dex: dex || {},
     // 유형 진단용 선택 집계. 회차마다 새로 시작한다
     tally: { 정공법: 0, 요령: 0, 탈출: 0, 버티기: 0, 관리: 0, 기회: 0 },
+    // 직전에 뜬 랜덤 이벤트 2개. 연달아 같은 게 나오지 않게 한다
+    recentEv: [],
     log: [],
     phase: 'play', ev: null,
     late: false, skipEvening: false,
@@ -739,6 +745,68 @@ function log(t, b) {
   S.log.unshift({ t: '[D' + S.day + '] ' + t, b: !!b });
   if (S.log.length > 60) S.log.pop();
 }
+
+/* ══════════════════════════════════════════════════════════════
+   랜덤 이벤트 — 하루가 시작될 때 확률(CFG.이벤트확률)로 하나 뽑는다.
+
+   원칙 둘:
+   ① 경고를 직접 주지 않는다. 랜덤으로 죽으면 납득이 안 된다.
+      게이지도 1 밑으로는 안 내린다(이벤트효과 참고). 경고는 플레이어가
+      관리할 기회가 있었던 경로 — 게이지 0 · 월세 미납 · 발각 — 로만 나온다.
+   ② 축마다 부정·긍정을 짝지어 기대값 합을 0 으로 둔다. 이벤트 때문에
+      난이도가 틀어졌는지 나중에 헷갈리지 않기 위해서다.
+
+   w: 평일 풀 · e: 주말 풀 (둘 다 켜면 공용)   bad: 로그를 붉게
+   선택지 순서는 손해 → 이득. sim.js 의 팝업처리() 가 활성화된 마지막
+   선택지를 누르므로, 이 순서라야 시뮬이 실제보다 나쁘게 나오지 않는다.
+   ══════════════════════════════════════════════════════════════ */
+const EVENTS = [
+  /* ── 평일 전용 8 (부정 4 · 긍정 4) ── */
+  { id: 'order', w: 1, bad: 1, t: '갑작스런 지시',
+    d: '"아 이것도 오늘까지 해줘"' + SEP + SEP + '팀장님은 할 말만 하고 사라졌다.',
+    opts: [{ t: '...넵', work: 30 },
+           { t: '팀원에게 넘긴다', need: () => S.card > 0, card: -1 }] },
+  { id: 'cancel', w: 1, t: '회의 취소',
+    d: '오후 회의가 날아갔다.' + SEP + SEP + '이게 제일 반가운 알림이다.', work: -30 },
+
+  { id: 'quit', w: 1, bad: 1, t: '옆자리 퇴사',
+    d: '"저 다음주까지만 나와요"' + SEP + SEP + '...그 일은 이제 누가 하죠?', work: 20, m: -5 },
+  { id: 'rookie', w: 1, t: '신입 들어옴',
+    d: '"선배님 잘 부탁드립니다!"' + SEP + SEP + '드디어 넘길 데가 생겼다.', work: -20, m: 5 },
+
+  { id: 'exec', w: 1, bad: 1, t: '엘리베이터에서 임원',
+    d: '하필 단둘이다.' + SEP + SEP + '"어... 요즘 일은 좀 어떤가"' + SEP
+     + '"아 네 뭐 ㅎㅎ"' + SEP + SEP + '9층 남았다.', m: -15 },
+  { id: 'snack', w: 1, t: '탕비실 신상 간식',
+    d: '이거 언제 들어왔지?' + SEP + SEP + '눈치껏 두 개 챙겼다.', m: 15 },
+
+  { id: 'ot', w: 1, bad: 1, t: '야근 강요',
+    d: '6시가 지났는데 아무도 일어나지 않는다.' + SEP + SEP + '들었던 가방을 다시 내려놨다.',
+    m: -10, h: -10 },
+  { id: 'ricecake', w: 1, t: '고객사가 떡을 돌렸다!',
+    d: '웬 떡이야' + SEP + SEP + '아침부터 배가 든든하다.', m: 10, h: 10 },
+
+  /* ── 공용 4 (부정 2 · 긍정 2) ── */
+  { id: 'roach', w: 1, e: 1, bad: 1, t: '눈을 떴는데',
+    d: '눈앞에 바퀴벌레가 있다..' + SEP + SEP + '으악!!', m: -15 },
+  { id: 'sun', w: 1, e: 1, t: '눈을 떴는데',
+    d: '햇빛이 쫙 들어온다.' + SEP + SEP + '오늘은 좀 괜찮을 것 같다.', m: 15 },
+
+  { id: 'cold', w: 1, e: 1, bad: 1, t: '감기',
+    d: '목이 칼칼하다.' + SEP + SEP + '이럴 때 아프면 제일 손해인데.',
+    opts: [{ t: '버틴다', h: -15 },
+           { t: '약 먹는다', need: () => S.items.약 > 0, item: '약' }] },
+  { id: 'mom', w: 1, e: 1, t: '엄마가 반찬을 보내줬다!',
+    d: '아이스박스가 문 앞에 와 있다.' + SEP + SEP + '한동안 밥 걱정은 없겠다.', h: 15 },
+
+  /* ── 주말 전용 2 (부정 1 · 긍정 1) ── */
+  { id: 'wedding', e: 1, bad: 1, t: '경조사',
+    d: '안 갈 수가 없는 결혼식이다.',
+    opts: [{ t: '못 간다고 한다', m: -15 },
+           { t: '봉투 낸다', need: () => S.money >= 30000, money: -30000 }] },
+  { id: 'resell', e: 1, t: '중고거래 대박',
+    d: '안 쓰던 거 올렸는데 바로 팔렸다.' + SEP + SEP + '이게 되네?', money: 30000 },
+];
 
 /* ══════════════════════════════════════════════════════════════
    3. LOGIC  (sim.js 공식 이식)
@@ -1108,7 +1176,64 @@ function afterSleep() {
   dayStart();
 }
 
+/* ── 랜덤 이벤트 ──────────────────────────────────────
+   EVENTS 테이블 위의 주석에 설계 원칙이 있다.                */
+
+/* 하루 시작 시 추첨. 뽑혔으면 이벤트를, 아니면 null 을 준다.
+   직전 2개는 후보에서 뺀다 — 같은 게 연달아 뜨면 랜덤으로 안 느껴진다. */
+function 이벤트뽑기() {
+  if (!S || S.phase !== 'play' || S.day <= 1) return null;   // 첫날은 깨끗하게 시작한다
+  if (Math.random() >= CFG.이벤트확률) return null;
+  const pool = EVENTS.filter(e => (isWeekend() ? e.e : e.w));
+  const recent = S.recentEv || [];                            // 옛 저장본에는 없다
+  const cand = pool.filter(e => recent.indexOf(e.id) < 0);
+  const 후보 = cand.length ? cand : pool;
+  return 후보[Math.floor(Math.random() * 후보.length)];
+}
+
+/* 효과 적용. 게이지는 1 밑으로 내려가지 않는다 —
+   랜덤 이벤트만으로는 죽지 않게 한다(EVENTS 주석 ①). */
+function 이벤트효과(o) {
+  const d = [];
+  const 칸 = (nm, v) => { if (v) d.push(nm + ' ' + (v > 0 ? '+' : '') + Math.round(v)); };
+  if (o.m)     { const b = S.m; S.m = Math.max(1, Math.min(100, S.m + o.m)); 칸('멘탈', S.m - b); }
+  if (o.h)     { const b = S.h; S.h = Math.max(1, Math.min(100, S.h + o.h)); 칸('건강', S.h - b); }
+  if (o.work)  { const b = S.work; S.work = Math.max(-M.배정량(), S.work + o.work); 칸('업무', S.work - b); }
+  if (o.money) { S.money += o.money; d.push('돈 ' + (o.money > 0 ? '+' : '-') + won(Math.abs(o.money))); }
+  if (o.card)  { S.card = Math.max(0, S.card + o.card); 칸('팀원 카드', o.card); }
+  if (o.item)  { S.items[o.item]--; d.push(o.item + ' -1'); }
+  return d;
+}
+
+/* 팝업을 띄운다. 어느 선택지를 누르든 닫히면 dayBegin 으로 이어간다. */
+function 이벤트열기(e) {
+  const 고름 = o => {
+    const d = 이벤트효과(o);
+    S.recentEv = [e.id].concat(S.recentEv || []).slice(0, 2);
+    log(e.t + ' — ' + (d.join(' / ') || '변화 없음') + '.', e.bad);
+    S.lastDelta = e.t + (d.length ? SEP + d.join(' · ') : '');
+  };
+  // 선택지가 없는 이벤트는 확인 버튼 하나로 이벤트 자체의 효과를 받는다
+  const list = e.opts || [{ t: '...그렇구나', m: e.m, h: e.h, work: e.work, money: e.money }];
+  openEvent({
+    title: e.t,
+    evid: e.id,        // roach·sun 처럼 제목이 같은 짝이 있어 제목으로는 구분이 안 된다
+    img: IMG.evDir ? IMG.evDir + e.id + '.png' : '',
+    desc: e.d,
+    opts: list.map(o => ({ t: o.t, need: o.need, run: () => 고름(o) })),
+    next: dayBegin,
+  });
+}
+
+/* 하루 시작 — 랜덤 이벤트를 먼저 굴린다. 뜨면 팝업을 닫을 때 dayBegin 으로 이어지고,
+   안 뜨면 곧바로 dayBegin 이다. */
 function dayStart() {
+  const e = 이벤트뽑기();
+  if (e) return 이벤트열기(e);
+  dayBegin();
+}
+
+function dayBegin() {
   if (S.dow === 6) return settle();   // 토요일 정산
   if (S.dow <= 5) return morning();
   render(); save();                    // 일요일
@@ -2003,8 +2128,11 @@ document.addEventListener('click', e => {
     closeEvent(); S.phase = 'play';
     ev.opts[i].run();
     if (S.phase === 'play') {
-      // 이벤트 종류에 따라 진행
-      if (ev.title === '취침') { afterSleep(); }
+      // 이벤트 종류에 따라 진행.
+      // next 를 들고 있으면 그걸 따른다 — 새 이벤트는 뒷일을 스스로 안다.
+      // 기존 넷은 next 가 없으므로 아래 title 사슬에 그대로 걸린다.
+      if (ev.next) { ev.next(); }
+      else if (ev.title === '취침') { afterSleep(); }
       else if (ev.title === '승진') { dayStart(); }
       else if (ev.title === '월세 밀림' || ev.title === '월급날') { render(); save(); }
       else if (ev.title === '업무 밀림') { advance(); }
