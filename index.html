@@ -697,7 +697,8 @@ const setSleepScreen = on => { try { localStorage.setItem(OPTKEY, on ? '1' : '0'
    아이폰 사파리는 Vibration API 자체가 없다. 그 경우 조용히 아무 일도 안 한다.
    데스크톱도 마찬가지. 켜고 꺼도 에러가 나지 않는다. */
 const HAPKEY = 'salaryman_haptic';
-const HAPMS = 10;          // 툭 하는 정도. 한 판에 버튼을 50번 넘게 누르므로 약해야 한다
+const HAPMS = 20;          // 10 은 실기에서 거의 안 느껴졌다(2026-09-11 안드로이드 실측).
+                           // 한 판에 버튼을 50번 넘게 누르는 구조라 여기서 더 올리면 피곤해진다
 const hapticOn = () => { try { return localStorage.getItem(HAPKEY) !== '0'; } catch (e) { return true; } };
 const setHaptic = on => { try { localStorage.setItem(HAPKEY, on ? '1' : '0'); } catch (e) {} };
 const 진동가능 = () => { try { return typeof navigator.vibrate === 'function'; } catch (e) { return false; } };
