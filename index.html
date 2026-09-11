@@ -691,6 +691,21 @@ const OPTKEY = 'salaryman_sleepscreen';
 const sleepScreenOn = () => { try { return localStorage.getItem(OPTKEY) !== '0'; } catch (e) { return true; } };
 const setSleepScreen = on => { try { localStorage.setItem(OPTKEY, on ? '1' : '0'); } catch (e) {} };
 
+/* ── 진동 ──
+   게임 저장(salaryman_v1)과 분리된 키다. 환생해도 데이터 초기화해도 안 지워지고
+   스키마와도 무관하다 — 취침 화면 토글과 같은 방식.
+   아이폰 사파리는 Vibration API 자체가 없다. 그 경우 조용히 아무 일도 안 한다.
+   데스크톱도 마찬가지. 켜고 꺼도 에러가 나지 않는다. */
+const HAPKEY = 'salaryman_haptic';
+const HAPMS = 10;          // 툭 하는 정도. 한 판에 버튼을 50번 넘게 누르므로 약해야 한다
+const hapticOn = () => { try { return localStorage.getItem(HAPKEY) !== '0'; } catch (e) { return true; } };
+const setHaptic = on => { try { localStorage.setItem(HAPKEY, on ? '1' : '0'); } catch (e) {} };
+const 진동가능 = () => { try { return typeof navigator.vibrate === 'function'; } catch (e) { return false; } };
+function 진동() {
+  if (!hapticOn() || !진동가능()) return;
+  try { navigator.vibrate(HAPMS); } catch (e) {}
+}
+
 (function initGA() {
   if (!GA_ID || isDev()) return;        // 개발자모드면 GA 스크립트 자체를 안 부름
   const s = document.createElement('script');
@@ -1683,6 +1698,10 @@ function renderSet() {
   return '<h3>화면</h3><table>'
     + row('취침 화면', (sleepScreenOn() ? '보기' : '건너뛰기')
         + ' <button data-opt="sleep" class="mini">' + (sleepScreenOn() ? '끄기' : '켜기') + '</button>')
+    + row('버튼 진동', (진동가능() ? (hapticOn() ? '켜짐' : '꺼짐')
+                                  : '이 기기는 지원하지 않음')
+        + (진동가능() ? ' <button data-opt="haptic" class="mini">'
+                        + (hapticOn() ? '끄기' : '켜기') + '</button>' : ''))
     + '</table>'
     + '<h3>저장</h3><table>'
     + row('상태', 저장가능() ? '저장됨' : '저장 안 됨')
@@ -2219,11 +2238,17 @@ document.addEventListener('click', e => {
 
   if (t.dataset.tab) { TAB = t.dataset.tab; render(); return; }
   if (t.dataset.opt === 'sleep') { setSleepScreen(!sleepScreenOn()); render(); return; }
-  if (t.dataset.ci !== undefined) { pick(choices()[+t.dataset.ci]); return; }
+  if (t.dataset.opt === 'haptic') {
+    const on = !hapticOn(); setHaptic(on);
+    if (on) 진동();                       // 켤 때 한 번 울려 세기를 바로 느끼게 한다
+    render(); return;
+  }
+  if (t.dataset.ci !== undefined) { 진동(); pick(choices()[+t.dataset.ci]); return; }
 
   if (t.dataset.ev !== undefined) {
     const ev = S.ev, i = +t.dataset.ev;
     if (!ev || !ev.opts || !ev.opts[i]) { closeEvent(); render(); return; }  // 중복 클릭 방어
+    진동();
     closeEvent(); S.phase = 'play';
     ev.opts[i].run();
     if (S.phase === 'play') {
