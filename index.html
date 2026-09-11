@@ -124,6 +124,10 @@ button.mini{border:1px solid #000;background:#fff;font:inherit;font-size:11px;
 .pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer}
 .pop .opts button:hover{background:#f0f0f0}
 .pop .opts button:disabled{opacity:.35;cursor:not-allowed}
+/* 팝업 선택지의 수치 — 선택지 카드(.card .e)와 같은 모양으로 맞춘다.
+   기기 조건을 안 따진다. 팝업은 툴팁이 없어 여기 없으면 볼 방법이 아예 없다. */
+.pop .opts button .evsub{display:block;font-size:11.5px;color:#333;font-weight:normal;
+                         margin-top:4px;letter-spacing:-.3px}
 .pop .cost{font-size:12px;color:#333}
 
 /* ── 표 / 목록 ── */
@@ -1237,6 +1241,19 @@ function 이벤트효과(o) {
   return d;
 }
 
+/* 선택지가 무엇을 하는지 한 줄로. 팝업은 툴팁이 없어 이게 없으면
+   누르기 전에 알 방법이 없다. 표기는 선택지 카드(멘+10 · 돈-3만)와 맞춘다. */
+function 효과줄(o) {
+  const p = [];
+  if (o.m)     p.push('멘' + (o.m > 0 ? '+' : '') + o.m);
+  if (o.h)     p.push('건' + (o.h > 0 ? '+' : '') + o.h);
+  if (o.work)  p.push('업' + (o.work > 0 ? '+' : '') + o.work);
+  if (o.money) p.push('돈' + sw(o.money));
+  if (o.card)  p.push('카드' + (o.card > 0 ? '+' : '') + o.card);
+  if (o.item)  p.push(o.item + '-1');
+  return p.join(' ') || '변화 없음';
+}
+
 /* 팝업을 띄운다. 어느 선택지를 누르든 닫히면 넘겨받은 '다음' 으로 이어간다.
    기상은 dayBegin(그날 처리로), 오전업무는 블록복귀(그 자리에 그대로). */
 function 이벤트열기(e, 다음) {
@@ -1253,7 +1270,7 @@ function 이벤트열기(e, 다음) {
     evid: e.id,        // roach·sun 처럼 제목이 같은 짝이 있어 제목으로는 구분이 안 된다
     img: IMG.evDir ? IMG.evDir + e.id + '.png' : '',
     desc: e.d,
-    opts: list.map(o => ({ t: o.t, need: o.need, run: () => 고름(o) })),
+    opts: list.map(o => ({ t: o.t, sub: 효과줄(o), need: o.need, run: () => 고름(o) })),
     next: 다음,
   });
 }
@@ -1423,6 +1440,13 @@ function setScreen(html, key) {
 }
 const esc = s => String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
 const won = n => Math.round(n).toLocaleString() + '원';
+/* 돈을 짧게 — 선택지 카드와 이벤트 팝업이 같은 표기를 써야 읽는 눈이 안 흔들린다 */
+const sw = v => {
+  const s = v > 0 ? '+' : '-', a = Math.abs(v);
+  if (a >= 10000 && a % 10000 === 0) return s + (a / 10000) + '만';
+  if (a >= 1000 && a % 1000 === 0) return s + (a / 1000) + '천';
+  return s + a.toLocaleString();
+};
 const 요일 = ['', '월', '화', '수', '목', '금', '토', '일'];
 
 function gauge(nm, v, max, danger, over) {
@@ -1457,12 +1481,6 @@ function renderMain() {
         + blockImgTag()
         + '<div class="cards">';
   // 터치기기용 압축 금액 표기: 3000 -> -3천 / 140000 -> -14만
-  const sw = v => {
-    const s = v > 0 ? '+' : '-', a = Math.abs(v);
-    if (a >= 10000 && a % 10000 === 0) return s + (a / 10000) + '만';
-    if (a >= 1000 && a % 1000 === 0) return s + (a / 1000) + '천';
-    return s + a.toLocaleString();
-  };
   const open = choices();
   choicesAll().forEach(c => {
     // 미해금 — 비활성 카드로 해금 조건만 표시
@@ -1638,7 +1656,7 @@ function renderSkill() {
 function 총평줄(dex) {
   const t = 총평(dex || {});
   if (!t) return '';
-  return '<div class="verdict">당신은 <b>' + esc(t.이름) + '</b> 입니다'
+  return '<div class="verdict"> <b>' + esc(t.이름) + '</b>'
        + '<span class="cnt">기록된 ' + t.기록수 + '개 중 ' + t.수 + '번</span></div>';
 }
 
@@ -1818,7 +1836,9 @@ function openEvent(ev) {
   h += '<div class="desc">' + esc(ev.desc) + '</div><div class="opts">';
   ev.opts.forEach((o, i) => {
     const ok = !o.need || o.need();
-    h += '<button data-ev="' + i + '"' + (ok ? '' : ' disabled') + '>' + esc(o.t) + '</button>';
+    h += '<button data-ev="' + i + '"' + (ok ? '' : ' disabled') + '>' + esc(o.t)
+       + (o.sub ? '<span class="evsub">' + esc(o.sub) + '</span>' : '')
+       + '</button>';
   });
   h += '</div>';
   if (ev.tapAny) h += '<div class="taphint">아무 곳이나 탭하면 넘어갑니다</div>';
