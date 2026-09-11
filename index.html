@@ -869,8 +869,21 @@ function 전체SP() {
   TREE.forEach(c => c.구간.forEach(g => g.nodes.forEach(n => { if (!n.end) sum += sk(n.id); })));
   return sum;
 }
+/* 이 선택지를 고르면 소지금이 음수가 되나.
+   표시값이 아니라 실제 지출로 본다 — 무소유(지출 -20%/lv) 가 붙으면 값이 달라진다. */
+function 돈부족(c) {
+  if (!S || !(c.money < 0)) return false;
+  const cost = effect(c).money;
+  return cost < 0 && S.money + cost < 0;
+}
+
 function gateOk(c) {
   if (c.need && sk(c.need) < 1) return false;
+  // 소지금보다 비싼 선택지는 잠근다. 막지 않으면 소지금이 음수로 찍힌다.
+  // 상점·부동산·경조사는 이미 같은 방식으로 막고 있어 그쪽에 맞춘 것이다.
+  // 블록마다 돈이 안 드는 선택지(바로 출근하기·일하기·굶고 일하기·집가기·놀기)가
+  // 하나씩 있고 그것들은 gate 도 need 도 없어서, 전부 잠겨 막히는 일은 없다.
+  if (돈부족(c)) return false;
   const g = c.gate;
   if (!g) return true;
   if (g.line && 계열SP(g.line) < g.sp) return false;
@@ -916,6 +929,7 @@ function gateText(c) {
     if (g.skill) p.push('스킬 ' + g.skill);
     if (g.card) p.push('팀원 카드 ' + g.card + '개 (현재 ' + S.card + ')');
   }
+  if (돈부족(c)) p.push('소지금 ' + won(-effect(c).money) + ' (현재 ' + won(S.money) + ')');
   return p.join(' · ');
 }
 
