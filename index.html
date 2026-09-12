@@ -1265,10 +1265,11 @@ function 이벤트효과(o) {
    누르기 전에 알 방법이 없다. 표기는 선택지 카드(멘+10 · 돈-3만)와 맞춘다. */
 function 효과줄(o) {
   const p = [];
-  if (o.m)     p.push('멘' + 기호(o.m));
-  if (o.h)     p.push('건' + 기호(o.h));
-  if (o.work)  p.push('업' + (o.work > 0 ? '+' : '') + o.work);
-  if (o.money) p.push('돈' + sw(o.money));
+  if (o.m)     p.push('멘탈' + 기호(o.m));
+  if (o.h)     p.push('건강' + 기호(o.h));
+  // 이벤트의 work 는 게이지 증감 그대로다 — 늘어나는 쪽(+)도 있어 기호를 뒤집어 쓴다
+  if (o.work)  p.push('업무' + (o.work > 0 ? 업무기호(o.work).replace(/−/g, '+') : 업무기호(-o.work)));
+  if (o.money) p.push('돈' + (o.money > 0 ? '+' : '') + Math.round(o.money).toLocaleString());
   if (o.card)  p.push('카드' + (o.card > 0 ? '+' : '') + o.card);
   if (o.item)  p.push(o.item + '-1');
   return p.join(' ') || '변화 없음';
@@ -1480,13 +1481,10 @@ const won = n => Math.round(n).toLocaleString() + '원';
 const 기호칸 = 10;
 const 기호 = v => v >= 기호칸 ? '++' : v > 0 ? '+' : v <= -기호칸 ? '−−' : '−';
 
-/* 돈을 짧게 — 선택지 카드와 이벤트 팝업이 같은 표기를 써야 읽는 눈이 안 흔들린다 */
-const sw = v => {
-  const s = v > 0 ? '+' : '-', a = Math.abs(v);
-  if (a >= 10000 && a % 10000 === 0) return s + (a / 10000) + '만';
-  if (a >= 1000 && a % 1000 === 0) return s + (a / 1000) + '천';
-  return s + a.toLocaleString();
-};
+/* 업무는 3단계다. 2~60 으로 범위가 넓어 2단계에는 안 담긴다.
+   v 는 '깎아주는 양'(양수). 게이지가 내려가므로 표기는 전부 마이너스다. */
+const 업무기호 = v => v >= 20 ? '−−−' : v >= 8 ? '−−' : '−';
+
 const 요일 = ['', '월', '화', '수', '목', '금', '토', '일'];
 
 function gauge(nm, v, max, danger, over) {
@@ -1535,10 +1533,13 @@ function renderMain() {
     const e = effect(c);
     const lines = [];   // 데스크톱 툴팁용 (전체)
     const sh = [];      // 터치기기 카드용 (압축)
-    if (e.work) { lines.push('업무 -' + e.work); sh.push('업-' + e.work); }
-    if (e.m) { lines.push('멘탈 ' + 기호(e.m)); sh.push('멘' + 기호(e.m)); }
-    if (e.h) { lines.push('건강 ' + 기호(e.h)); sh.push('건' + 기호(e.h)); }
-    if (e.money) { lines.push('돈 ' + (e.money > 0 ? '+' : '') + won(e.money)); sh.push('돈' + sw(e.money)); }
+    if (e.work) { lines.push('업무 ' + 업무기호(e.work)); sh.push('업무' + 업무기호(e.work)); }
+    if (e.m) { lines.push('멘탈 ' + 기호(e.m)); sh.push('멘탈' + 기호(e.m)); }
+    if (e.h) { lines.push('건강 ' + 기호(e.h)); sh.push('건강' + 기호(e.h)); }
+    // 돈만 실제 금액이다. 소지금은 상태 탭이 대신 계산해주지 않아
+    // "이걸 사면 월세를 낼 수 있나" 를 매 선택마다 직접 세야 한다
+    if (e.money) { const g = (e.money > 0 ? '+' : '') + Math.round(e.money).toLocaleString();
+                   lines.push('돈 ' + g + '원'); sh.push('돈' + g); }
     if (e.card) { lines.push('팀원 카드 +1'); sh.push('카드+1'); }
     if (e.cardUse) { lines.push('팀원 카드 -' + e.cardUse); sh.push('카드-' + e.cardUse); }
     let risk = '', badge = '';
