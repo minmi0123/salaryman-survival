@@ -78,8 +78,12 @@ body{background:#fff;color:#000;
 .card{border:1.5px solid #000;padding:10px 6px;cursor:pointer;background:#fff;text-align:center;
       font:inherit;color:inherit;font-weight:bold;font-size:14.5px;position:relative;
       min-height:62px;display:flex;flex-direction:column;
-      align-items:center;justify-content:center}
-.card:active{background:#ddd}
+      align-items:center;justify-content:center;
+      box-shadow:0 3px 0 #000;transition:transform .05s,box-shadow .05s;
+      -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* 눌림 — 아래 그림자만큼 버튼이 내려앉는다. 진동 대신 손맛 */
+.card:not(:disabled):not(.lock):active{background:#ddd;transform:translateY(3px);box-shadow:0 0 0 #000}
+.card:disabled,.card.lock{box-shadow:none}
 .card .t{display:block;font-weight:bold}
 /* 선택지 수치·위험 배지 — 기본은 보인다(모바일 우선).
    진짜 마우스 + 넓은 화면일 때만 숨기고 hover 툴팁으로 대신한다.
@@ -141,7 +145,11 @@ button.mini{border:1px solid #000;background:#fff;font:inherit;font-size:11px;
             padding:2px 8px;margin-left:8px;cursor:pointer}
 .pop .desc.mono{font-family:Consolas,monospace;text-align:left;font-size:13px}
 .pop .opts{display:flex;flex-direction:column;gap:8px}
-.pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer}
+.pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer;
+                  box-shadow:0 3px 0 #000;transition:transform .05s,box-shadow .05s;
+                  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.pop .opts button:not(:disabled):active{background:#ddd;transform:translateY(3px);box-shadow:0 0 0 #000}
+.pop .opts button:disabled{box-shadow:none}
 .pop .opts button:hover{background:#f0f0f0}
 .pop .opts button:disabled{opacity:.35;cursor:not-allowed}
 /* 팝업 선택지의 수치 — 선택지 카드(.card .e)와 같은 모양으로 맞춘다.
@@ -2316,6 +2324,9 @@ function 우회복사(done) {
    5. EVENTS
    ══════════════════════════════════════════════════════════════ */
 /* 아무 곳이나 탭해서 닫기 — tapAny 팝업(취침)만. 첫 선택지를 실행한다 */
+// iOS 사파리는 touchstart 리스너가 하나라도 있어야 :active 가 걸린다 (버튼 눌림 표시용)
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 document.addEventListener('click', e => {
   if (e.target.closest('button')) return;              // 버튼 클릭은 아래 핸들러가 처리
   const ov = document.getElementById('overlay');
