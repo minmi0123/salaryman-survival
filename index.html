@@ -78,8 +78,12 @@ body{background:#fff;color:#000;
 .card{border:1.5px solid #000;padding:10px 6px;cursor:pointer;background:#fff;text-align:center;
       font:inherit;color:inherit;font-weight:bold;font-size:14.5px;position:relative;
       min-height:62px;display:flex;flex-direction:column;
-      align-items:center;justify-content:center}
-.card:active{background:#ddd}
+      align-items:center;justify-content:center;
+      box-shadow:0 3px 0 #000;transition:transform .05s,box-shadow .05s;
+      -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* 눌림 — 아래 그림자만큼 버튼이 내려앉는다. 진동 대신 손맛 */
+.card:not(:disabled):not(.lock):active{background:#ddd;transform:translateY(3px);box-shadow:0 0 0 #000}
+.card:disabled,.card.lock{box-shadow:none}
 .card .t{display:block;font-weight:bold}
 /* 선택지 수치·위험 배지 — 기본은 보인다(모바일 우선).
    진짜 마우스 + 넓은 화면일 때만 숨기고 hover 툴팁으로 대신한다.
@@ -141,7 +145,11 @@ button.mini{border:1px solid #000;background:#fff;font:inherit;font-size:11px;
             padding:2px 8px;margin-left:8px;cursor:pointer}
 .pop .desc.mono{font-family:Consolas,monospace;text-align:left;font-size:13px}
 .pop .opts{display:flex;flex-direction:column;gap:8px}
-.pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer}
+.pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer;
+                  box-shadow:0 3px 0 #000;transition:transform .05s,box-shadow .05s;
+                  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.pop .opts button:not(:disabled):active{background:#ddd;transform:translateY(3px);box-shadow:0 0 0 #000}
+.pop .opts button:disabled{box-shadow:none}
 .pop .opts button:hover{background:#f0f0f0}
 .pop .opts button:disabled{opacity:.35;cursor:not-allowed}
 /* 팝업 선택지의 수치 — 선택지 카드(.card .e)와 같은 모양으로 맞춘다.
@@ -715,22 +723,6 @@ const BLKIMG = {
 const OPTKEY = 'salaryman_sleepscreen';
 const sleepScreenOn = () => { try { return localStorage.getItem(OPTKEY) !== '0'; } catch (e) { return true; } };
 const setSleepScreen = on => { try { localStorage.setItem(OPTKEY, on ? '1' : '0'); } catch (e) {} };
-
-/* ── 진동 ──
-   게임 저장(salaryman_v1)과 분리된 키다. 환생해도 데이터 초기화해도 안 지워지고
-   스키마와도 무관하다 — 취침 화면 토글과 같은 방식.
-   아이폰 사파리는 Vibration API 자체가 없다. 그 경우 조용히 아무 일도 안 한다.
-   데스크톱도 마찬가지. 켜고 꺼도 에러가 나지 않는다. */
-const HAPKEY = 'salaryman_haptic';
-const HAPMS = 20;          // 10 은 실기에서 거의 안 느껴졌다(2026-09-11 안드로이드 실측).
-                           // 한 판에 버튼을 50번 넘게 누르는 구조라 여기서 더 올리면 피곤해진다
-const hapticOn = () => { try { return localStorage.getItem(HAPKEY) !== '0'; } catch (e) { return true; } };
-const setHaptic = on => { try { localStorage.setItem(HAPKEY, on ? '1' : '0'); } catch (e) {} };
-const 진동가능 = () => { try { return typeof navigator.vibrate === 'function'; } catch (e) { return false; } };
-function 진동() {
-  if (!hapticOn() || !진동가능()) return;
-  try { navigator.vibrate(HAPMS); } catch (e) {}
-}
 
 (function initGA() {
   if (!GA_ID || isDev()) return;        // 개발자모드면 GA 스크립트 자체를 안 부름
@@ -1589,7 +1581,7 @@ const 업무기호 = v => v >= 20 ? '−−−' : v >= 8 ? '−−' : '−';
 const 요일 = ['', '월', '화', '수', '목', '금', '토', '일'];
 
 /* 위험 3단계 — 남은 여유(100 - 소모)가 40 / 25 / 10 이하.
-   1 주의: 이름 옆 !   2 위험: 그 막대가 깜빡임   3 임박: 상단 바 전체가 맥박처럼 뜀 + 진동 한 번
+   1 주의: 이름 옆 !   2 위험: 그 막대가 깜빡임   3 임박: 상단 바 전체가 맥박처럼 뜀
    업무는 차오를수록 나쁘므로 여유 = 100 - 업무 로 뒤집어 본다. */
 function 위험단계(nm) {
   const r = nm === '멘탈' ? S.m : nm === '건강' ? S.h : 100 - S.work;
@@ -1597,7 +1589,6 @@ function 위험단계(nm) {
 }
 // 깜빡임 위상을 시각 기준으로 맞춘다 — render 마다 요소가 새로 만들어져도 박자가 끊기지 않는다
 const 위상 = ms => '-' + (Date.now() % ms) + 'ms';
-let RISK_PREV = null;      // null = 아직 그린 적 없음 (이어하기로 들어왔을 때 진동을 울리지 않는다)
 
 function gauge(nm, v, max, danger, over) {
   const pct = Math.max(0, Math.min(100, v / max * 100));
@@ -1618,13 +1609,9 @@ function renderBar() {
   const over = S.work > 100 ? Math.round(S.work - 100) : 0;
   let dots = '';
   for (let i = 0; i < CFG.총경고임계; i++) dots += (i < S.warn ? '●' : '○');
-  // 임박(3단계) — 여러 게이지 중 하나라도 들어가면 바 전체가 반응. 진입하는 순간에만 진동한다
+  // 임박(3단계) — 여러 게이지 중 하나라도 들어가면 바 전체가 반응
   const top = Math.max(위험단계('멘탈'), 위험단계('건강'), 위험단계('업무'));
   $('bar').classList[top >= 3 ? 'add' : 'remove']('risk3');   // toggle 은 sim.js 의 DOM 흉내에 없다
-  if (top >= 3 && RISK_PREV !== null && RISK_PREV < 3 && hapticOn() && 진동가능()) {
-    try { navigator.vibrate([40, 60, 40]); } catch (e) {}
-  }
-  RISK_PREV = top;
   $('bar').innerHTML =
     '<div class="row1"><span>D' + S.day + ' ' + 요일[S.dow] + '요일 · ' + 직급() + '</span>'
     + '<span>' + won(S.money) + '</span></div>'
@@ -1846,10 +1833,6 @@ function renderSet() {
   return '<h3>화면</h3><table>'
     + row('취침 화면', (sleepScreenOn() ? '보기' : '건너뛰기')
         + ' <button data-opt="sleep" class="mini">' + (sleepScreenOn() ? '끄기' : '켜기') + '</button>')
-    + row('버튼 진동', (진동가능() ? (hapticOn() ? '켜짐' : '꺼짐')
-                                  : '이 기기는 지원하지 않음')
-        + (진동가능() ? ' <button data-opt="haptic" class="mini">'
-                        + (hapticOn() ? '끄기' : '켜기') + '</button>' : ''))
     + '</table>'
     + '<h3>저장</h3><table>'
     + row('상태', 저장가능() ? '저장됨' : '저장 안 됨')
@@ -2341,6 +2324,9 @@ function 우회복사(done) {
    5. EVENTS
    ══════════════════════════════════════════════════════════════ */
 /* 아무 곳이나 탭해서 닫기 — tapAny 팝업(취침)만. 첫 선택지를 실행한다 */
+// iOS 사파리는 touchstart 리스너가 하나라도 있어야 :active 가 걸린다 (버튼 눌림 표시용)
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 document.addEventListener('click', e => {
   if (e.target.closest('button')) return;              // 버튼 클릭은 아래 핸들러가 처리
   const ov = document.getElementById('overlay');
@@ -2404,19 +2390,21 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (t.dataset.tab) { TAB = t.dataset.tab; render(); return; }
-  if (t.dataset.opt === 'sleep') { setSleepScreen(!sleepScreenOn()); render(); return; }
-  if (t.dataset.opt === 'haptic') {
-    const on = !hapticOn(); setHaptic(on);
-    if (on) 진동();                       // 켤 때 한 번 울려 세기를 바로 느끼게 한다
-    render(); return;
+  if (t.dataset.tab) {
+    // 지금 보고 있는 탭을 한 번 더 누르면 맨 위로 (스킬 트리처럼 긴 화면용)
+    if (TAB === t.dataset.tab) {
+      try { $('screen').scrollTo({ top: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      catch (e) { $('screen').scrollTop = 0; }
+      return;
+    }
+    TAB = t.dataset.tab; render(); return;
   }
-  if (t.dataset.ci !== undefined) { 진동(); pick(choices()[+t.dataset.ci]); return; }
+  if (t.dataset.opt === 'sleep') { setSleepScreen(!sleepScreenOn()); render(); return; }
+  if (t.dataset.ci !== undefined) { pick(choices()[+t.dataset.ci]); return; }
 
   if (t.dataset.ev !== undefined) {
     const ev = S.ev, i = +t.dataset.ev;
     if (!ev || !ev.opts || !ev.opts[i]) { closeEvent(); render(); return; }  // 중복 클릭 방어
-    진동();
     closeEvent(); S.phase = 'play';
     ev.opts[i].run();
     if (S.phase === 'play') {
