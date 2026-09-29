@@ -35,6 +35,16 @@ body{background:#fff;color:#000;
 
 /* ── 상태바 ── */
 #bar{border-bottom:2px solid #000;padding:8px 10px;position:sticky;top:0;background:#fff;z-index:10}
+.g .nm .bang{font-weight:bold}
+.g .fill.lv2{animation:gBlink 1.4s ease-in-out infinite}
+.g .fill.lv3{animation:gBlink .7s ease-in-out infinite}
+@keyframes gBlink{0%,100%{opacity:1}50%{opacity:.3}}
+#bar.risk3{animation:barPulse 1s ease-in-out infinite}
+@keyframes barPulse{0%,100%{box-shadow:inset 0 0 0 #000}50%{box-shadow:inset 0 -5px 0 #000}}
+@media (prefers-reduced-motion:reduce){
+  .g .fill.lv2,.g .fill.lv3{animation:none}
+  #bar.risk3{animation:none;box-shadow:inset 0 -5px 0 #000}   /* 움직임은 끄되 신호는 남긴다 */
+}
 #bar .row1{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:6px}
 .g{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:12px}
 .g .nm{width:34px;flex:none}
@@ -1578,14 +1588,28 @@ const 업무기호 = v => v >= 20 ? '−−−' : v >= 8 ? '−−' : '−';
 
 const 요일 = ['', '월', '화', '수', '목', '금', '토', '일'];
 
+/* 위험 3단계 — 남은 여유(100 - 소모)가 40 / 25 / 10 이하.
+   1 주의: 이름 옆 !   2 위험: 그 막대가 깜빡임   3 임박: 상단 바 전체가 맥박처럼 뜀 + 진동 한 번
+   업무는 차오를수록 나쁘므로 여유 = 100 - 업무 로 뒤집어 본다. */
+function 위험단계(nm) {
+  const r = nm === '멘탈' ? S.m : nm === '건강' ? S.h : 100 - S.work;
+  return r <= 10 ? 3 : r <= 25 ? 2 : r <= 40 ? 1 : 0;
+}
+// 깜빡임 위상을 시각 기준으로 맞춘다 — render 마다 요소가 새로 만들어져도 박자가 끊기지 않는다
+const 위상 = ms => '-' + (Date.now() % ms) + 'ms';
+let RISK_PREV = null;      // null = 아직 그린 적 없음 (이어하기로 들어왔을 때 진동을 울리지 않는다)
+
 function gauge(nm, v, max, danger, over) {
   const pct = Math.max(0, Math.min(100, v / max * 100));
   // 경고 직후 그 게이지만 차오르는(멘탈·건강) / 비워지는(업무) 애니메이션
   const d = fxDelay(nm);
   const fx = d ? (nm === '업무' ? ' drain' : ' refill') : '';
-  return '<div class="g"><span class="nm">' + nm + '</span>'
+  const lv = fx ? 0 : 위험단계(nm);
+  const ph = d ? d : lv >= 2 ? 위상(lv === 3 ? 700 : 1400) : '';
+  return '<div class="g"><span class="nm">' + nm + (lv ? '<span class="bang">!</span>' : '') + '</span>'
     + '<span class="track"><span class="fill' + (danger && !fx ? ' warn' : '') + fx
-    + '" style="width:' + pct + '%' + (d ? ';animation-delay:' + d : '') + '"></span></span>'
+    + (lv >= 2 ? ' lv' + lv : '')
+    + '" style="width:' + pct + '%' + (ph ? ';animation-delay:' + ph : '') + '"></span></span>'
     + '<span class="val">' + Math.max(0, Math.round(v)) + ' / ' + max
     + (over ? ' <span class="over">+' + over + '</span>' : '') + '</span></div>';
 }
@@ -1594,6 +1618,13 @@ function renderBar() {
   const over = S.work > 100 ? Math.round(S.work - 100) : 0;
   let dots = '';
   for (let i = 0; i < CFG.총경고임계; i++) dots += (i < S.warn ? '●' : '○');
+  // 임박(3단계) — 여러 게이지 중 하나라도 들어가면 바 전체가 반응. 진입하는 순간에만 진동한다
+  const top = Math.max(위험단계('멘탈'), 위험단계('건강'), 위험단계('업무'));
+  $('bar').classList[top >= 3 ? 'add' : 'remove']('risk3');   // toggle 은 sim.js 의 DOM 흉내에 없다
+  if (top >= 3 && RISK_PREV !== null && RISK_PREV < 3 && hapticOn() && 진동가능()) {
+    try { navigator.vibrate([40, 60, 40]); } catch (e) {}
+  }
+  RISK_PREV = top;
   $('bar').innerHTML =
     '<div class="row1"><span>D' + S.day + ' ' + 요일[S.dow] + '요일 · ' + 직급() + '</span>'
     + '<span>' + won(S.money) + '</span></div>'
