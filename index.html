@@ -184,6 +184,10 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .verdict{border:2px solid #000;padding:10px;text-align:center;font-size:14px;margin-bottom:9px}
 .verdict b{font-size:16px}
 .verdict .cnt{display:block;font-size:11px;color:#666;margin-top:3px}
+.bonusbox{border:1.5px dashed #000;padding:8px;margin-bottom:12px;text-align:center;font-size:12px}
+.bonusbox b{display:block;font-size:14px;margin-top:2px}
+.bonusbox.new{border:2px solid #000;background:#000;color:#fff}
+.bonussum{font-size:11.5px;line-height:1.6;margin:0 0 9px;padding:6px 8px;border:1px dashed #999;color:#333}
 .typebox{border:1.5px solid #000;padding:9px;margin-bottom:12px;text-align:center}
 .typename{font-size:16px;font-weight:bold}
 .typesub{font-size:11.5px;color:#555;margin-top:4px;line-height:1.5}
@@ -745,7 +749,7 @@ function emptySkills() {
 function newRun(carrySp, dex) {
   return {
     v: SCHEMA,
-    m: 100, h: 100, work: 0, money: CFG.시작금,
+    m: 100, h: 100, work: 0, money: CFG.시작금 + 보너스('시작금', dex),
     day: 1, dow: 1, bi: 0,
     warn: 0, wm: 0, wh: 0, wk: 0, wmoney: 0,
     items: { 약: 0, 담배: 0, AI: 0, 시간멈추기: 0, 복권: 0, 부적: 0 },
@@ -868,32 +872,95 @@ const 직급 = () => CFG.직급[rank()];
    방어형(배열)은 최고 레벨에서 100% 가 되도록 단계를 재분배한다. */
 const 감쇠 = (k, lv, floor) => Math.max(floor, 1 - k * lv);
 
+/* ══════════════════════════════════════════════════════════════
+   엔딩 영구 보너스 — 도감에 새긴 엔딩마다 한 번, 회차·환생·처음부터하기를 넘어 유지된다
+   좋은 엔딩을 보면 스킬·SP 가 초기화돼 약해지는 문제를 도감이 메운다.
+   값은 일부러 작다 (좋은 엔딩 2~3% · 배드 1%). 21종을 다 모아야 체감이 된다.
+   저장은 dex 에서 계산하므로 스키마 변경이 없다.
+   ══════════════════════════════════════════════════════════════ */
+const pct = v => Math.round(v * 100) + '%';
+const BONUS_LABEL = {
+  월급:    v => '월급 +' + pct(v),
+  월세:    v => '월세 -' + pct(v),
+  지출:    v => '지출 -' + pct(v),
+  알바수입:v => '알바 수입 +' + pct(v),
+  부업수입:v => '부업 수입 +' + pct(v),
+  아이템:  v => '아이템 회복 +' + pct(v),
+  상점:    v => '상점 가격 -' + pct(v),
+  운동:    v => '운동 효과 +' + pct(v),
+  아침멘탈:v => '아침 멘탈 +' + v,
+  배정:    v => '업무 배정량 -' + pct(v),
+  건강소모:v => '건강 소모 -' + pct(v),
+  일멘탈:  v => '업무 멘탈 소모 -' + pct(v),
+  부업멘탈:v => '부업 멘탈 소모 -' + pct(v),
+  발각:    v => '발각 확률 -' + pct(v),
+  지각:    v => '지각 확률 -' + pct(v),
+  시작금:  v => '시작금 +' + v.toLocaleString() + '원',
+};
+const BONUS = {
+  '하극상': ['월급', .02],
+  '연금이나타자': ['월세', .02],
+  '직장인 왜하는데ㅋㅋ': ['알바수입', .03],
+  '이제 이게 본업인데요?': ['부업수입', .03],
+  '제가 좀 잘 만들어요': ['아이템', .03],
+  '저도 이제 대표입니다': ['상점', .02],
+  '회사는 헬스장 가는 길에': ['운동', .03],
+  '이 또한 지나가리라': ['아침멘탈', 1],
+  '꼰대임원': ['배정', .02],
+  '헬스장사장님': ['건강소모', .02],
+  '치킨집사장님': ['시작금', 5000],
+  '헬창조직보스': ['발각', .02],
+  '출근이 곧 수행': ['일멘탈', .02],
+  '구독자가 곧 신도': ['부업멘탈', .02],
+  '가진 게 없으니 잃을 것도 없다': ['지출', .02],
+  '이거 드시고 구원받으세요': ['지각', .02],
+  '건물주': ['월급', .02],
+  '퇴사': ['일멘탈', .01],
+  '아사': ['건강소모', .01],
+  '백수': ['월세', .01],
+  '짤림': ['배정', .01],
+};
+const bonusText = name => { const b = BONUS[name]; return b ? BONUS_LABEL[b[0]](b[1]) : ''; };
+// 지금까지 새긴 엔딩들의 해당 항목 합. dex 를 넘기면 S 없이도 계산된다 (newRun · 시작화면)
+const 보너스 = (key, dex) => {
+  const d = dex || (S && S.dex) || {};
+  let sum = 0;
+  for (const n in BONUS) if (d[n] && BONUS[n][0] === key) sum += BONUS[n][1];
+  return sum;
+};
+// 도감 보너스 합계 줄 (항목별로 합쳐서)
+function bonusSummary(dex) {
+  const acc = {};
+  for (const n in BONUS) if (dex[n]) acc[BONUS[n][0]] = (acc[BONUS[n][0]] || 0) + BONUS[n][1];
+  return Object.keys(acc).map(k => BONUS_LABEL[k](acc[k]));
+}
+
 const M = {
   처리량:      () => CFG.P + sk('일잘러') * 0.75 + (sk('운동하기') + sk('기도하기')) * 0.25,
-  배정배율:    () => 감쇠(0.12, sk('팀원강화'), 0.5),
-  일멘탈배율:  () => 감쇠(0.12, sk('ai사용'), 0.2),
-  건강배율:    () => 감쇠(0.12, sk('짬처리'), 0.2),
+  배정배율:    () => 감쇠(0.12, sk('팀원강화'), 0.5) * (1 - 보너스('배정')),
+  일멘탈배율:  () => 감쇠(0.12, sk('ai사용'), 0.2) * (1 - 보너스('일멘탈')),
+  건강배율:    () => 감쇠(0.12, sk('짬처리'), 0.2) * (1 - 보너스('건강소모')),
   야근배율:    () => 감쇠(0.22, sk('칼퇴문화'), 0.4),
-  부업멘탈배율:() => 감쇠(0.11, sk('MZ사원'), 0.25),
-  부업수입:    () => 1 + sk('재빠른손') * 0.15 + sk('SNS개설') * 0.30,
-  알바수입:    () => 1 + sk('재빠른손') * 0.15 + sk('알바n잡') * 0.22 + sk('주말 PT알바') * 0.30,
+  부업멘탈배율:() => 감쇠(0.11, sk('MZ사원'), 0.25) * (1 - 보너스('부업멘탈')),
+  부업수입:    () => 1 + sk('재빠른손') * 0.15 + sk('SNS개설') * 0.30 + 보너스('부업수입'),
+  알바수입:    () => 1 + sk('재빠른손') * 0.15 + sk('알바n잡') * 0.22 + sk('주말 PT알바') * 0.30 + 보너스('알바수입'),
   알바건강배율:() => 감쇠(0.15, sk('알바 요령'), 0.4),
-  지출배율:    () => 감쇠(0.20, sk('무소유'), 0.4),
+  지출배율:    () => 감쇠(0.20, sk('무소유'), 0.4) * (1 - 보너스('지출')),
   성과급:      () => sk('팀 성과급') * 20000,
   판매배율:    () => 1 + sk('단골 판로') * 0.25,
-  발각방어:    () => [0, .4, .65, .85, 1][sk('사생활 보호 모니터')] || 0,
-  지각방어:    () => [0, .3, .55, .8, 1][sk('달리기')] || 0,
+  발각방어:    () => Math.min(1, ([0, .4, .65, .85, 1][sk('사생활 보호 모니터')] || 0) + 보너스('발각')),
+  지각방어:    () => Math.min(1, ([0, .3, .55, .8, 1][sk('달리기')] || 0) + 보너스('지각')),
   취침배율:    () => 1 + sk('규칙적인 생활') * 0.25,
   주말배율:    () => 1 + sk('주말은 쉬는 날') * 0.30 + sk('골프 접대') * 0.25,
   저녁배율:    () => 1 + sk('일기쓰기') * 0.22,
-  운동배율:    () => 1 + sk('운동하기') * 0.25,
-  아침멘탈:    () => sk('기도하기') * 5 + sk('팬 응원') * 4,
+  운동배율:    () => 1 + sk('운동하기') * 0.25 + 보너스('운동'),
+  아침멘탈:    () => sk('기도하기') * 5 + sk('팬 응원') * 4 + 보너스('아침멘탈'),
   월급배율:    () => 1 + sk('사내정치') * .20 + sk('임원진급') * .40
-                       + sk('팀원강화') * .12 + sk('일대신해줌') * .08,
-  월세배율:    () => 감쇠(0.22, sk('무지출챌린지'), 0.4),
+                       + sk('팀원강화') * .12 + sk('일대신해줌') * .08 + 보너스('월급'),
+  월세배율:    () => 감쇠(0.22, sk('무지출챌린지'), 0.4) * (1 - 보너스('월세')),
   카드최대:    () => sk('일대신해줌'),
-  아이템효과:  () => CFG.아이템회복 * (1 + sk('약·담배 효율') * 0.25 + sk('유통 인맥') * 0.20),
-  상점할인:    () => 감쇠(0.12, sk('단골'), 0.5),
+  아이템효과:  () => CFG.아이템회복 * (1 + sk('약·담배 효율') * 0.25 + sk('유통 인맥') * 0.20 + 보너스('아이템')),
+  상점할인:    () => 감쇠(0.12, sk('단골'), 0.5) * (1 - 보너스('상점')),
   피로:        () => 1 + S.day * CFG.피로계수,
   운보정:      () => S.items.부적 > 0 ? 0.5 : 1,   // 부적: 지각·발각 확률 반감
   배정량:      () => CFG.배정[rank()] * M.배정배율() * (1 + S.day * CFG.배정증가),
@@ -1384,7 +1451,7 @@ function settle() {
 /* ── 엔딩 ── */
 function badEnd(name) {
   S.phase = 'ending';
-  S.over = { kind: 'bad', name: name };
+  S.over = { kind: 'bad', name: name, first: !S.dex[name] };
   S.dex[name] = 진단();            // 같은 엔딩을 다시 보면 덮어쓴다
   track('bad_ending', { name: name, day: S.day });
   log('배드엔딩 — ' + name + '.', 1);
@@ -1421,7 +1488,7 @@ function fireEnding(node, treeName) {
     if (c) name = c;
   }
   S.phase = 'ending';
-  S.over = { kind: 'good', name: name };
+  S.over = { kind: 'good', name: name, first: !S.dex[name] };
   S.dex[name] = 진단();
   track('good_ending', { name: name, day: S.day });
   log('엔딩 — ' + name + '.', 1);
@@ -1432,7 +1499,7 @@ function buyEstate() {
   if (S.money < CFG.부동산가) return;
   S.money -= CFG.부동산가;
   S.phase = 'ending';
-  S.over = { kind: 'good', name: '건물주' };
+  S.over = { kind: 'good', name: '건물주', first: !S.dex['건물주'] };
   S.dex['건물주'] = 진단();
   track('good_ending', { name: '건물주', day: S.day });
   log('부동산 구매. 건물주 엔딩.', 1);
@@ -1710,7 +1777,7 @@ function 총평줄(dex) {
 function renderDex() {
   const got = DEX_ALL.filter(d => S.dex[d]).length;
   let h = '<h3>엔딩 도감 <span style="float:right;font-weight:normal">' + got + ' / ' + DEX_ALL.length + '</span></h3>';
-  h += 총평줄(S.dex);
+  h += 총평줄(S.dex) + 보너스요약줄(S.dex);
   if (got >= DEX_ALL.length) h += '<p class="big">도감 완성</p>';
   h += '<div class="dex">';
   DEX_ALL.forEach(d => {
@@ -1759,6 +1826,19 @@ function 유형박스() {
        + '</div>';
 }
 
+function 보너스박스() {
+  const o = S.over, t = bonusText(o.name);
+  if (!t) return '';
+  return '<div class="bonusbox' + (o.first ? ' new' : '') + '">'
+       + '<span>' + (o.first ? '영구 보너스 획득!' : '영구 보너스 (이미 획득)') + '</span>'
+       + '<b>' + esc(t) + '</b></div>';
+}
+
+function 보너스요약줄(dex) {
+  const l = bonusSummary(dex);
+  return l.length ? '<div class="bonussum"><b>영구 보너스</b> ' + esc(l.join(' · ')) + '</div>' : '';
+}
+
 function renderEnding() {
   const o = S.over;
   if (o.kind === 'bad') {
@@ -1766,7 +1846,7 @@ function renderEnding() {
       + '<div class="big">' + esc(o.name) + '</div>'
       + '<div class="sub">"안녕 나는 직장인이었던 유령인데 ' + esc(o.name) + '여서 죽었어.\n'
       + '다시 직장생활을 하면 잘 할 수 있을 것 같아.\n한번 더 도전해보고싶어."</div>'
-      + 유형박스()
+      + 유형박스() + 보너스박스()
       + '<table>' + row('생존', 'D' + S.day) + row('이번 회차 획득 SP', S.earned)
       + row('환생 시 보유 SP', Math.floor(S.bank + S.earned)) + '</table>'
       + '<div class="btnrow"><button data-re="1">환생하기</button>'
@@ -1775,7 +1855,7 @@ function renderEnding() {
   }
   return endImgTag(o.name)
     + '<div class="big">' + esc(o.name) + '</div>'
-    + 유형박스()
+    + 유형박스() + 보너스박스()
     + '<table>' + row('생존', 'D' + S.day) + row('소지금', won(S.money)) + '</table>'
     + '<div class="btnrow"><button data-re="0">새 인생 시작</button></div>'
     + '<div class="btnrow"><button data-card="open">결과 공유하기</button></div>';
@@ -1874,7 +1954,7 @@ function renderTitleDex() {
   const got = DEX_ALL.filter(d => st.dex[d]).length;
   let h = '<h3>엔딩 도감 <span style="float:right;font-weight:normal">'
         + got + ' / ' + DEX_ALL.length + '</span></h3>'
-        + 총평줄(st.dex) + '<div class="dex">';
+        + 총평줄(st.dex) + 보너스요약줄(st.dex) + '<div class="dex">';
   DEX_ALL.forEach(d => {
     h += dexCell(d, !!st.dex[d]);
   });
@@ -1959,6 +2039,8 @@ function openDexPop(name, got) {
     }
     h += '</div>';
   }
+  if (BONUS[name]) h += '<div class="condlbl">영구 보너스</div><div class="desc">'
+                     + (got ? esc(bonusText(name)) : '???') + '</div>';
   h += '<div class="condlbl">획득 조건</div>';
   h += '<div class="desc">' + esc(info ? info.cond() : '조건 미기재') + '</div>';
   h += '<div class="opts"><button data-dexclose="1">닫기</button></div>';
