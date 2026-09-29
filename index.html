@@ -41,6 +41,11 @@ body{background:#fff;color:#000;
 .g .track{flex:1;height:12px;border:1px solid #000;position:relative;background:#fff}
 .g .track{display:block}
 .g .fill{display:block;height:100%;background:#000;transition:width .18s linear}
+.g .fill.refill{animation:gRefill .7s cubic-bezier(.2,.7,.3,1) both}
+.g .fill.drain{animation:gDrain .7s cubic-bezier(.2,.7,.3,1) both}
+@keyframes gRefill{from{width:0}}        /* 도착값은 인라인 width — 0 에서 차오른다 */
+@keyframes gDrain{from{width:100%}}
+@media (prefers-reduced-motion:reduce){.g .fill.refill,.g .fill.drain{animation:none}}
 .g .fill.warn{background:repeating-linear-gradient(45deg,#000,#000 3px,#fff 3px,#fff 6px)}
 .g .val{width:74px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
 .g .over{font-weight:bold}
@@ -1136,6 +1141,18 @@ function pick(c) {
 // 2026-09-02 에 축별 분리로 바꿨다가 2026-09-09 되돌렸다 —
 // 분리하면 죽는 데 너무 오래 걸려 배드엔딩으로 SP 를 쌓기 어렵고,
 // 힘든 상태가 계속 이어져 재미가 떨어진다는 플레이 피드백.
+/* 경고로 게이지가 강제 회복되는 순간의 연출 상태. 저장하지 않는다.
+   경고 → 진행 사이에 render 가 여러 번 불려도 애니메이션이 처음부터 다시 돌지 않게,
+   시작 시각을 들고 있다가 경과 시간만큼 앞당겨서 그린다. */
+const FX_MS = 700;
+let FX = null;
+function fxDelay(nm) {
+  if (!FX || FX.g !== nm) return '';
+  const el = Date.now() - FX.t;
+  if (el >= FX_MS) { FX = null; return ''; }
+  return '-' + el + 'ms';
+}
+
 function addWarn(g) {
   S.warn++;
   if (g === '멘탈') { S.wm++; S.m = 100; }
@@ -1148,6 +1165,7 @@ function addWarn(g) {
     return badEnd({ 멘탈: '퇴사', 건강: '아사', 업무: '짤림', 돈: '백수' }[g]);
   }
   if (S.warn >= CFG.총경고임계) return badEnd('짤림');
+  if (g === '멘탈' || g === '건강' || g === '업무') FX = { g: g, t: Date.now() };
 }
 
 // 아이템 사용 — 이벤트/상시 공용. 부작용 포함, 제조 스킬로 제거
@@ -1562,8 +1580,12 @@ const 요일 = ['', '월', '화', '수', '목', '금', '토', '일'];
 
 function gauge(nm, v, max, danger, over) {
   const pct = Math.max(0, Math.min(100, v / max * 100));
+  // 경고 직후 그 게이지만 차오르는(멘탈·건강) / 비워지는(업무) 애니메이션
+  const d = fxDelay(nm);
+  const fx = d ? (nm === '업무' ? ' drain' : ' refill') : '';
   return '<div class="g"><span class="nm">' + nm + '</span>'
-    + '<span class="track"><span class="fill' + (danger ? ' warn' : '') + '" style="width:' + pct + '%"></span></span>'
+    + '<span class="track"><span class="fill' + (danger && !fx ? ' warn' : '') + fx
+    + '" style="width:' + pct + '%' + (d ? ';animation-delay:' + d : '') + '"></span></span>'
     + '<span class="val">' + Math.max(0, Math.round(v)) + ' / ' + max
     + (over ? ' <span class="over">+' + over + '</span>' : '') + '</span></div>';
 }
