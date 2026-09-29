@@ -104,6 +104,12 @@ body{background:#fff;color:#000;
              font:inherit;font-size:13px;cursor:pointer}
 #tabs button:last-child{border-right:none}
 #tabs button.on{background:#000;color:#fff;font-weight:bold}
+#tabs button .sp{display:inline-block;min-width:16px;padding:0 4px;margin-left:3px;border:1.5px solid #000;
+                 border-radius:9px;font-size:11px;line-height:15px;font-weight:bold;background:#000;color:#fff}
+#tabs button.on .sp{background:#fff;color:#000;border-color:#fff}
+#tabs button.hasSp:not(.on){animation:spPulse 1.4s ease-in-out infinite}
+@keyframes spPulse{0%,100%{background:#fff}50%{background:#ddd}}
+@media (prefers-reduced-motion:reduce){#tabs button.hasSp:not(.on){animation:none}}
 
 /* ── 팝업 ── */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;
@@ -1778,8 +1784,13 @@ function renderEnding() {
 function renderTabs() {
   const list = [['main', '상태'], ['item', '아이템'], ['skill', '스킬'], ['dex', '도감'], ['set', '설정']];
   if (isWeekend()) list.splice(1, 0, ['shop', '상점']);
-  $('tabs').innerHTML = list.map(([k, n]) =>
-    '<button data-tab="' + k + '"' + (TAB === k ? ' class="on"' : '') + '>' + n + '</button>').join('');
+  const sp = S ? Math.floor(S.sp) : 0;   // 쓸 수 있는 SP 가 있으면 스킬 탭에 뱃지
+  $('tabs').innerHTML = list.map(([k, n]) => {
+    const has = k === 'skill' && sp >= 1;
+    const cls = (TAB === k ? 'on' : '') + (has ? ' hasSp' : '');
+    return '<button data-tab="' + k + '"' + (cls ? ' class="' + cls.trim() + '"' : '') + '>' + n
+      + (has ? '<span class="sp">' + sp + '</span>' : '') + '</button>';
+  }).join('');
 }
 
 /* ── 시작화면 ──
