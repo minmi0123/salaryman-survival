@@ -724,6 +724,51 @@ const OPTKEY = 'salaryman_sleepscreen';
 const sleepScreenOn = () => { try { return localStorage.getItem(OPTKEY) !== '0'; } catch (e) { return true; } };
 const setSleepScreen = on => { try { localStorage.setItem(OPTKEY, on ? '1' : '0'); } catch (e) {} };
 
+/* ── 소리 ──
+   배경음악: SND.bgm 파일을 넣으면 켜진다. 파일이 없으면(404) 조용히 포기하고 다시 시도하지 않는다.
+            음악은 켜져 있을 때 첫 탭에서야 받기 시작한다 (preload none) — 끈 사람은 데이터를 안 쓴다.
+            브라우저는 사용자가 한 번 누르기 전에는 소리를 못 틀게 막는다. 그래서 첫 클릭에서 시작한다.
+   효과음:   파일 없이 Web Audio 로 합성한 짧은 '톡'. 에셋 0.
+   설정 키는 게임 저장과 분리 — 취침 화면 토글과 같은 방식. 기본값은 둘 다 켜짐. */
+const SND = { bgm: 'snd/bgm.mp3', bgmVol: 0.35 };
+const BGMKEY = 'salaryman_bgm', SFXKEY = 'salaryman_sfx';
+const bgmOn = () => { try { return localStorage.getItem(BGMKEY) !== '0'; } catch (e) { return true; } };
+const sfxOn = () => { try { return localStorage.getItem(SFXKEY) !== '0'; } catch (e) { return true; } };
+const setBgm = on => { try { localStorage.setItem(BGMKEY, on ? '1' : '0'); } catch (e) {} };
+const setSfx = on => { try { localStorage.setItem(SFXKEY, on ? '1' : '0'); } catch (e) {} };
+
+let BGM = null, BGM_BAD = false;
+function bgmPlay() {
+  if (!bgmOn() || BGM_BAD || !SND.bgm || typeof Audio === 'undefined') return;
+  if (!BGM) {
+    BGM = new Audio();
+    BGM.preload = 'none'; BGM.loop = true; BGM.volume = SND.bgmVol;
+    BGM.addEventListener('error', () => { BGM_BAD = true; if (SCREEN === 'game' && TAB === 'set') render(); });
+    BGM.src = SND.bgm;
+  }
+  if (BGM.paused) { const p = BGM.play(); if (p && p.catch) p.catch(() => {}); }
+}
+function bgmPause() { if (BGM && !BGM.paused) BGM.pause(); }
+
+let ACX = null;
+function 효과음() {
+  if (!sfxOn()) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try {
+    if (!ACX) ACX = new AC();
+    if (ACX.state === 'suspended') ACX.resume();
+    const t = ACX.currentTime, o = ACX.createOscillator(), g = ACX.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(900, t);
+    o.frequency.exponentialRampToValueAtTime(420, t + 0.05);
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    o.connect(g); g.connect(ACX.destination);
+    o.start(t); o.stop(t + 0.08);
+  } catch (e) {}
+}
+
 (function initGA() {
   if (!GA_ID || isDev()) return;        // 개발자모드면 GA 스크립트 자체를 안 부름
   const s = document.createElement('script');
@@ -1833,6 +1878,10 @@ function renderSet() {
   return '<h3>화면</h3><table>'
     + row('취침 화면', (sleepScreenOn() ? '보기' : '건너뛰기')
         + ' <button data-opt="sleep" class="mini">' + (sleepScreenOn() ? '끄기' : '켜기') + '</button>')
+    + row('배경음악', (BGM_BAD ? '음악 파일 준비 중' : (bgmOn() ? '켜짐' : '꺼짐'))
+        + (BGM_BAD ? '' : ' <button data-opt="bgm" class="mini">' + (bgmOn() ? '끄기' : '켜기') + '</button>'))
+    + row('효과음', (sfxOn() ? '켜짐' : '꺼짐')
+        + ' <button data-opt="sfx" class="mini">' + (sfxOn() ? '끄기' : '켜기') + '</button>')
     + '</table>'
     + '<h3>저장</h3><table>'
     + row('상태', 저장가능() ? '저장됨' : '저장 안 됨')
@@ -2324,6 +2373,11 @@ function 우회복사(done) {
    5. EVENTS
    ══════════════════════════════════════════════════════════════ */
 /* 아무 곳이나 탭해서 닫기 — tapAny 팝업(취침)만. 첫 선택지를 실행한다 */
+// 다른 앱·탭으로 가면 음악을 멈추고, 돌아오면 이어서 튼다
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) bgmPause(); else if (BGM) bgmPlay();
+});
+
 // iOS 사파리는 touchstart 리스너가 하나라도 있어야 :active 가 걸린다 (버튼 눌림 표시용)
 document.addEventListener('touchstart', () => {}, { passive: true });
 
@@ -2342,6 +2396,8 @@ document.addEventListener('click', e => {
 document.addEventListener('click', e => {
   const t = e.target.closest('button');
   if (!t) return;
+  bgmPlay();                                       // 첫 탭에서 시작 (이미 재생 중이면 아무 일 없음)
+  if (!t.disabled && !t.dataset.opt) 효과음();     // 소리 설정 버튼은 자기가 알아서 울린다
 
   if (t.dataset.title) {
     const a = t.dataset.title;
@@ -2400,6 +2456,8 @@ document.addEventListener('click', e => {
     TAB = t.dataset.tab; render(); return;
   }
   if (t.dataset.opt === 'sleep') { setSleepScreen(!sleepScreenOn()); render(); return; }
+  if (t.dataset.opt === 'bgm') { const on = !bgmOn(); setBgm(on); on ? bgmPlay() : bgmPause(); render(); return; }
+  if (t.dataset.opt === 'sfx') { const on = !sfxOn(); setSfx(on); if (on) 효과음(); render(); return; }
   if (t.dataset.ci !== undefined) { pick(choices()[+t.dataset.ci]); return; }
 
   if (t.dataset.ev !== undefined) {
