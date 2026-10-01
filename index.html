@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#1d1a22">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>직장에서 살아남기</title>
 <meta name="description" content="멘탈·건강·업무·돈 4개 게이지로 버티는 환생 반복형 직장인 시뮬레이션. 퇴사·아사·백수·짤림부터 건물주·꼰대임원까지 엔딩 21종.">
@@ -26,63 +27,94 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%BC%3C/text%3E%3C/svg%3E">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#fff;color:#000;
-     font-family:"Apple SD Gothic Neo","Noto Sans KR","맑은 고딕","Malgun Gothic",
+/* ── 색 — exit-company(회사에서 탈출하기)와 같은 팔레트. 직장인 시리즈 통일 ──
+   이전에는 흑백(#000/#fff)이었다. 색을 바꿀 일이 있으면 여기만 고친다. */
+:root{
+  --bg:#1d1a22;      /* 바탕 */
+  --panel:#2b2733;   /* 카드 · 팝업 */
+  --raise:#3a3445;   /* hover · 눌림 · 표 머리 */
+  --sink:#15131a;    /* 게이지 빈 칸 · 버튼 아래 그림자 */
+  --line:#e9e2d6;    /* 테두리 */
+  --dim:#6b6378;     /* 점선 · 잠김 */
+  --text:#f1ece4;
+  --muted:#a39cae;
+  --accent:#ffe27a;
+  --danger:#ff7a7a;
+  --ink:#1d1a22;     /* 노란 바탕 위 글자 */
+  --g-m:#7fc8e8;     /* 멘탈 */
+  --g-h:#6ccf7f;     /* 건강 */
+  --g-w:#f2b33d;     /* 업무 — 차오를수록 나쁘다 */
+}
+/* 도트 글꼴은 깔려 있을 때만 쓴다 (exit-company 와 같은 방식). 외부 폰트는 받지 않는다 */
+body{background:var(--bg);color:var(--text);
+     font-family:"Galmuri11","DungGeunMo","Apple SD Gothic Neo","Noto Sans KR","맑은 고딕","Malgun Gothic",
                  system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
      font-size:14px;line-height:1.5;-webkit-text-size-adjust:100%}
 #app{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;
-     border-left:1px solid #000;border-right:1px solid #000}
+     border-left:2px solid var(--panel);border-right:2px solid var(--panel)}
 
 /* ── 상태바 ── */
-#bar{border-bottom:2px solid #000;padding:8px 10px;position:sticky;top:0;background:#fff;z-index:10}
-.g .nm .bang{font-weight:bold}
-.g .fill.lv2{animation:gBlink 1.4s ease-in-out infinite}
-.g .fill.lv3{animation:gBlink .7s ease-in-out infinite}
+#bar{border-bottom:2px solid var(--line);padding:8px 10px;position:sticky;top:0;background:var(--bg);z-index:10}
+.g .nm .bang{font-weight:bold;color:var(--danger)}
+.g .fill.lv2{animation:gBlink 1.4s steps(2,jump-none) infinite}
+.g .fill.lv3{animation:gBlink .7s steps(2,jump-none) infinite}
 @keyframes gBlink{0%,100%{opacity:1}50%{opacity:.3}}
-#bar.risk3{animation:barPulse 1s ease-in-out infinite}
-@keyframes barPulse{0%,100%{box-shadow:inset 0 0 0 #000}50%{box-shadow:inset 0 -5px 0 #000}}
+#bar.risk3{animation:barPulse 1s steps(2,jump-none) infinite}
+@keyframes barPulse{0%,100%{box-shadow:inset 0 0 0 var(--danger)}50%{box-shadow:inset 0 -5px 0 var(--danger)}}
 @media (prefers-reduced-motion:reduce){
   .g .fill.lv2,.g .fill.lv3{animation:none}
-  #bar.risk3{animation:none;box-shadow:inset 0 -5px 0 #000}   /* 움직임은 끄되 신호는 남긴다 */
+  #bar.risk3{animation:none;box-shadow:inset 0 -5px 0 var(--danger)}   /* 움직임은 끄되 신호는 남긴다 */
 }
 #bar .row1{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:6px}
-.g{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:12px}
+#bar .row1 span:last-child{color:var(--accent)}
+.g{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
 .g .nm{width:34px;flex:none}
-.g .track{flex:1;height:12px;border:1px solid #000;position:relative;background:#fff}
+.g .track{flex:1;height:12px;border:2px solid var(--line);position:relative;background:var(--sink)}
 .g .track{display:block}
-.g .fill{display:block;height:100%;background:#000;transition:width .18s linear}
-.g .fill.refill{animation:gRefill .7s cubic-bezier(.2,.7,.3,1) both}
-.g .fill.drain{animation:gDrain .7s cubic-bezier(.2,.7,.3,1) both}
+/* 칸 나눔 — 막대 위에 8px 마다 틈을 덮는다. 레트로 HP 바 */
+.g .track::after{content:"";position:absolute;inset:0;pointer-events:none;
+                 background:repeating-linear-gradient(90deg,transparent 0 8px,var(--sink) 8px 10px)}
+.g .fill{display:block;height:100%;background:var(--text);transition:width .18s steps(4,end)}
+.g.g-m .fill{background:var(--g-m)}
+.g.g-h .fill{background:var(--g-h)}
+.g.g-w .fill{background:var(--g-w)}
+.g .fill.refill{animation:gRefill .7s steps(10,end) both}
+.g .fill.drain{animation:gDrain .7s steps(10,end) both}
 @keyframes gRefill{from{width:0}}        /* 도착값은 인라인 width — 0 에서 차오른다 */
 @keyframes gDrain{from{width:100%}}
 @media (prefers-reduced-motion:reduce){.g .fill.refill,.g .fill.drain{animation:none}}
-.g .fill.warn{background:repeating-linear-gradient(45deg,#000,#000 3px,#fff 3px,#fff 6px)}
+.g .fill.warn{background:repeating-linear-gradient(45deg,var(--danger),var(--danger) 3px,var(--sink) 3px,var(--sink) 6px)}
 .g .val{width:74px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
-.g .over{font-weight:bold}
-#warnrow{font-size:12px;margin-top:4px;letter-spacing:2px}
+.g .over{font-weight:bold;color:var(--danger)}
+#warnrow{font-size:12px;margin-top:4px;letter-spacing:2px;color:var(--muted)}
 
 /* ── 본문 ── */
 #screen{flex:1;padding:12px 10px 16px;overflow-y:auto}
-.clock{text-align:center;margin:14px 0 4px;font-size:40px;font-weight:bold;
-       letter-spacing:3px;font-variant-numeric:tabular-nums}
-.blockname{text-align:center;font-size:15px;margin-bottom:10px}
+.clock{text-align:center;margin:14px 0 4px;font-size:40px;font-weight:bold;color:var(--accent);
+       letter-spacing:3px;font-variant-numeric:tabular-nums;text-shadow:3px 3px 0 var(--sink)}
+.blockname{text-align:center;font-size:15px;margin-bottom:10px;color:var(--muted)}
 .delta{text-align:center;font-size:13px;min-height:20px;margin-bottom:8px;white-space:pre-line}
 .delta span{margin:0 5px}
 
 /* 블록 그림 — 매 턴 뜨므로 세로를 아낀다. 짧은 화면에서는 vh 로 더 줄인다 */
 .blkimg{display:block;width:100%;max-width:300px;max-height:32vh;object-fit:contain;
-        aspect-ratio:4/3;margin:0 auto 10px;border:1.5px solid #000;background:#fff}
+        aspect-ratio:4/3;margin:0 auto 10px;border:2px solid var(--line);background:#fff}
+/* 도트 장면 — 64x48 을 키워서 보여준다. 흐리게 보간하지 않게 pixelated */
+.scene{display:block;width:100%;max-width:320px;max-height:32vh;object-fit:contain;
+       aspect-ratio:4/3;margin:0 auto 12px;border:2px solid var(--line);background:var(--sink);
+       box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--panel);
+       image-rendering:pixelated;image-rendering:crisp-edges}
 
 /* ── 선택지 카드 ── */
 .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-.card{border:1.5px solid #000;padding:10px 6px;cursor:pointer;background:#fff;text-align:center;
+.card{border:2px solid var(--line);padding:10px 6px;cursor:pointer;background:var(--panel);text-align:center;
       font:inherit;color:inherit;font-weight:bold;font-size:14.5px;position:relative;
       min-height:62px;display:flex;flex-direction:column;
       align-items:center;justify-content:center;
-      box-shadow:0 3px 0 #000;transition:transform .05s,box-shadow .05s;
+      box-shadow:0 4px 0 var(--sink);transition:transform .05s,box-shadow .05s;
       -webkit-tap-highlight-color:transparent;touch-action:manipulation}
 /* 눌림 — 아래 그림자만큼 버튼이 내려앉는다. 진동 대신 손맛 */
-.card:not(:disabled):not(.lock):active{background:#ddd;transform:translateY(3px);box-shadow:0 0 0 #000}
+.card:not(:disabled):not(.lock):active{background:var(--raise);transform:translateY(4px);box-shadow:0 0 0 var(--sink)}
 .card:disabled,.card.lock{box-shadow:none}
 .card .t{display:block;font-weight:bold}
 /* 선택지 수치·위험 배지 — 기본은 보인다(모바일 우선).
@@ -90,19 +122,19 @@ body{background:#fff;color:#000;
    (hover:none) 한 줄에 기댔더니 스타일러스·마우스 연결·데스크톱 모드에서
    조건이 뒤집혀 수치가 통째로 사라졌다 — 2026-09-02 c951e0e 와 같은 증상이
    2026-09-11 에 재발했다. 애매한 기기에서는 '보이는 쪽' 으로 실패하게 둔다. */
-.card .e{display:block;font-size:11.5px;color:#333;font-weight:normal;
+.card .e{display:block;font-size:11.5px;color:var(--muted);font-weight:normal;
          margin-top:4px;letter-spacing:-.3px}
-.card .rk{display:inline;font-size:11px;font-weight:bold}
+.card .rk{display:inline;font-size:11px;font-weight:bold;color:var(--danger)}
 .card:disabled{opacity:.35;cursor:not-allowed}
 
 /* 미해금 — 흐리게가 아니라 점선 + 회색. 조건 문구가 읽혀야 하므로 */
-.card.lock{opacity:1;cursor:default;border-style:dashed;border-color:#999;color:#888}
+.card.lock{opacity:1;cursor:default;border-style:dashed;border-color:var(--dim);color:var(--muted);background:transparent}
 .card.lock .t{font-weight:normal}
 .card.lock .lk{display:block;font-size:11px;font-weight:normal;
                margin-top:5px;letter-spacing:-.3px;line-height:1.35}
 
 /* 배경 반응은 어느 기기가 hover 를 보고하든 무해하므로 그대로 둔다 */
-@media (hover:hover){ .card:not(.lock):hover{background:#f0f0f0} }
+@media (hover:hover){ .card:not(.lock):hover{background:var(--raise)} }
 
 /* 데스크톱 — 진짜 마우스(pointer:fine) + 앱 폭(520px)보다 넓은 화면일 때만
    수치를 감추고 hover 툴팁으로 바꾼다. 셋을 다 만족해야 해서
@@ -111,65 +143,67 @@ body{background:#fff;color:#000;
   .card .e{display:none}
   .card .rk{display:none}
   .card[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;right:0;top:100%;
-    z-index:30;background:#000;color:#fff;padding:7px 9px;font-size:11.5px;line-height:1.45;
-    white-space:pre-line;border:1px solid #000;text-align:left;pointer-events:none}
+    z-index:30;background:var(--sink);color:var(--text);padding:7px 9px;font-size:11.5px;line-height:1.45;
+    white-space:pre-line;border:2px solid var(--line);text-align:left;pointer-events:none}
   /* 마지막 줄은 아래가 스크롤 영역 밖이라 잘린다 → 위로 뒤집는다 */
   .cards .card[data-tip]:nth-last-child(-n+2):hover::after{top:auto;bottom:100%}
 }
 
 /* ── 탭바 ── */
-#tabs{display:flex;border-top:2px solid #000;position:sticky;bottom:0;background:#fff}
-#tabs button{flex:1;padding:11px 2px;border:none;border-right:1px solid #000;background:#fff;
-             font:inherit;font-size:13px;cursor:pointer}
+#tabs{display:flex;border-top:2px solid var(--line);position:sticky;bottom:0;background:var(--bg)}
+#tabs button{flex:1;padding:11px 2px;border:none;border-right:2px solid var(--panel);background:var(--bg);
+             font:inherit;font-size:13px;cursor:pointer;color:var(--muted)}
 #tabs button:last-child{border-right:none}
-#tabs button.on{background:#000;color:#fff;font-weight:bold}
-#tabs button .sp{display:inline-block;min-width:16px;padding:0 4px;margin-left:3px;border:1.5px solid #000;
-                 border-radius:9px;font-size:11px;line-height:15px;font-weight:bold;background:#000;color:#fff}
-#tabs button.on .sp{background:#fff;color:#000;border-color:#fff}
-#tabs button.hasSp:not(.on){animation:spPulse 1.4s ease-in-out infinite}
-@keyframes spPulse{0%,100%{background:#fff}50%{background:#ddd}}
+#tabs button.on{background:var(--accent);color:var(--ink);font-weight:bold}
+#tabs button .sp{display:inline-block;min-width:16px;padding:0 4px;margin-left:3px;border:2px solid var(--accent);
+                 font-size:11px;line-height:13px;font-weight:bold;background:var(--accent);color:var(--ink)}
+#tabs button.on .sp{background:var(--ink);color:var(--accent);border-color:var(--ink)}
+#tabs button.hasSp:not(.on){animation:spPulse 1.4s steps(2,jump-none) infinite}
+@keyframes spPulse{0%,100%{background:var(--bg)}50%{background:var(--raise)}}
 @media (prefers-reduced-motion:reduce){#tabs button.hasSp:not(.on){animation:none}}
 
-/* ── 팝업 ── */
-#overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;
+/* ── 팝업 — 테두리를 두 겹으로. RPG 대화창 ── */
+#overlay{position:fixed;inset:0;background:rgba(13,11,16,.75);display:none;
          align-items:center;justify-content:center;padding:16px;z-index:50}
 #overlay.on{display:flex}
-.pop{background:#fff;border:2px solid #000;max-width:420px;width:100%;padding:18px 16px;
-     max-height:90vh;overflow-y:auto}
-.pop h2{text-align:center;font-size:19px;margin-bottom:10px}
+.pop{background:var(--panel);border:2px solid var(--line);max-width:420px;width:100%;padding:18px 16px;
+     max-height:90vh;overflow-y:auto;box-shadow:0 0 0 3px var(--panel),0 0 0 5px var(--line)}
+.pop h2{text-align:center;font-size:19px;margin-bottom:10px;color:var(--accent)}
 .pop .desc{text-align:center;margin-bottom:16px;white-space:pre-line;font-size:14px}
 .pop .popimg{display:block;width:100%;max-width:340px;margin:0 auto 14px;
-             border:1px solid #000;image-rendering:auto}
-.pop .taphint{text-align:center;font-size:11px;color:#666;margin-top:10px}
-button.mini{border:1px solid #000;background:#fff;font:inherit;font-size:11px;
+             border:2px solid var(--line);background:#fff;image-rendering:auto}
+.pop .taphint{text-align:center;font-size:11px;color:var(--muted);margin-top:10px}
+button.mini{border:2px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-size:11px;
             padding:2px 8px;margin-left:8px;cursor:pointer}
 .pop .desc.mono{font-family:Consolas,monospace;text-align:left;font-size:13px}
 .pop .opts{display:flex;flex-direction:column;gap:8px}
-.pop .opts button{border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer;
-                  box-shadow:0 3px 0 #000;transition:transform .05s,box-shadow .05s;
+.pop .opts button{border:2px solid var(--line);background:var(--panel);color:var(--text);padding:10px;font:inherit;cursor:pointer;
+                  box-shadow:0 4px 0 var(--sink);transition:transform .05s,box-shadow .05s;
                   -webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.pop .opts button:not(:disabled):active{background:#ddd;transform:translateY(3px);box-shadow:0 0 0 #000}
+.pop .opts button:not(:disabled):active{background:var(--raise);transform:translateY(4px);box-shadow:0 0 0 var(--sink)}
 .pop .opts button:disabled{box-shadow:none}
-.pop .opts button:hover{background:#f0f0f0}
+.pop .opts button:hover{background:var(--raise)}
 .pop .opts button:disabled{opacity:.35;cursor:not-allowed}
 /* 팝업 선택지의 수치 — 선택지 카드(.card .e)와 같은 모양으로 맞춘다.
    기기 조건을 안 따진다. 팝업은 툴팁이 없어 여기 없으면 볼 방법이 아예 없다. */
-.pop .opts button .evsub{display:block;font-size:11.5px;color:#333;font-weight:normal;
+.pop .opts button .evsub{display:block;font-size:11.5px;color:var(--muted);font-weight:normal;
                          margin-top:4px;letter-spacing:-.3px}
-.pop .cost{font-size:12px;color:#333}
+.pop .cost{font-size:12px;color:var(--muted)}
 
 /* ── 표 / 목록 ── */
-h3{font-size:15px;border-bottom:1.5px solid #000;padding-bottom:3px;margin:14px 0 8px}
+h3{font-size:15px;border-bottom:2px solid var(--line);padding-bottom:3px;margin:14px 0 8px;color:var(--accent)}
+h3 span{color:var(--text)}
 h3:first-child{margin-top:0}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-th,td{border:1px solid #000;padding:4px 6px;text-align:left}
-th{background:#000;color:#fff;font-weight:normal}
+th,td{border:2px solid var(--panel);padding:4px 6px;text-align:left}
+th{background:var(--raise);color:var(--muted);font-weight:normal}
+td{background:var(--sink)}
 td.n{text-align:right;font-variant-numeric:tabular-nums}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.slot{border:1.5px solid #000;padding:6px 4px;text-align:center;font-size:12px;position:relative}
-.slot .cnt{position:absolute;top:2px;right:4px;font-weight:bold}
-.slot .pr{font-size:11px;color:#333;margin-top:3px}
-.slot button{margin-top:5px;width:100%;border:1px solid #000;background:#fff;font:inherit;
+.slot{border:2px solid var(--line);background:var(--panel);padding:6px 4px;text-align:center;font-size:12px;position:relative}
+.slot .cnt{position:absolute;top:2px;right:4px;font-weight:bold;color:var(--accent)}
+.slot .pr{font-size:11px;color:var(--muted);margin-top:3px}
+.slot button{margin-top:5px;width:100%;border:2px solid var(--line);background:var(--raise);color:var(--text);font:inherit;
              font-size:11px;padding:3px;cursor:pointer}
 .slot .btns{display:flex;gap:3px}
 .slot .btns button{margin-top:5px}
@@ -177,78 +211,82 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 
 /* ── 스킬 ── */
 .tree{margin-bottom:16px}
-.tree .hd{font-weight:bold;border-bottom:1px solid #000;padding-bottom:2px;margin-bottom:6px}
-.node{display:flex;align-items:flex-start;gap:8px;border:1px solid #000;padding:6px;margin-bottom:5px}
+.tree .hd{font-weight:bold;border-bottom:2px solid var(--dim);padding-bottom:2px;margin-bottom:6px}
+.node{display:flex;align-items:flex-start;gap:8px;border:2px solid var(--line);background:var(--panel);padding:6px;margin-bottom:5px}
 .node.locked{opacity:.55}
 .node.locked .info{filter:blur(4.5px);user-select:none;pointer-events:none}
 .node.locked .lv{filter:blur(3px)}
-.node.maxed{background:#f2f2f2}
+.node.maxed{background:var(--raise);border-color:var(--accent)}
 .node .info{flex:1;font-size:12.5px}
 .node .info b{font-size:13px}
-.node .q{font-size:11px;color:#444;font-style:italic}
-.node .lv{font-weight:bold;font-size:12px;white-space:nowrap}
-.node button{border:1px solid #000;background:#fff;font:inherit;font-size:11px;padding:4px 7px;
+.node .q{font-size:11px;color:var(--muted);font-style:italic}
+.node .lv{font-weight:bold;font-size:12px;white-space:nowrap;color:var(--accent)}
+.node button{border:2px solid var(--line);background:var(--raise);color:var(--text);font:inherit;font-size:11px;padding:4px 7px;
              cursor:pointer;white-space:nowrap}
 .node button:disabled{opacity:.3;cursor:not-allowed}
-.endnode{border-width:2px}
+.endnode{border-width:3px}
 
 /* ── 도감 ── */
 .dex{display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:12px}
-.dexit{border:1px solid #000;padding:5px 6px;background:#fff;font:inherit;font-size:12px;
+.dexit{border:2px solid var(--line);padding:5px 6px;background:var(--panel);font:inherit;font-size:12px;
        color:inherit;text-align:left;cursor:pointer;width:100%}
-.dexit.no{color:#aaa;border-style:dashed}
-.dexit:active{background:#eee}
-/* 저장 안내 — 평소엔 점선으로 조용히, 저장이 막혔을 때만 실선+굵게.
-   화면이 흑백이라 색으로 경고를 못 준다. 테두리와 굵기로 구분한다. */
-.savenote{border:1px dashed #999;padding:9px 10px;margin-top:12px;
-          font-size:11.5px;color:#555;line-height:1.6;text-align:center}
-.savenote b{display:block;font-size:12.5px;color:#000;margin-bottom:3px}
-.savenote.warn{border:1.5px solid #000;color:#000}
-.verdict{border:2px solid #000;padding:10px;text-align:center;font-size:14px;margin-bottom:9px}
-.verdict b{font-size:16px}
-.verdict .cnt{display:block;font-size:11px;color:#666;margin-top:3px}
-.bonusbox{border:1.5px dashed #000;padding:8px;margin-bottom:12px;text-align:center;font-size:12px}
+.dexit.no{color:var(--dim);border-style:dashed;border-color:var(--dim);background:transparent}
+.dexit:active{background:var(--raise)}
+/* 저장 안내 — 평소엔 점선으로 조용히, 저장이 막혔을 때만 실선+굵게+빨강 */
+.savenote{border:2px dashed var(--dim);padding:9px 10px;margin-top:12px;
+          font-size:11.5px;color:var(--muted);line-height:1.6;text-align:center}
+.savenote b{display:block;font-size:12.5px;color:var(--text);margin-bottom:3px}
+.savenote.warn{border:2px solid var(--danger);color:var(--text)}
+.savenote.warn b{color:var(--danger)}
+.verdict{border:2px solid var(--line);background:var(--panel);padding:10px;text-align:center;font-size:14px;margin-bottom:9px}
+.verdict b{font-size:16px;color:var(--accent)}
+.verdict .cnt{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+.bonusbox{border:2px dashed var(--line);padding:8px;margin-bottom:12px;text-align:center;font-size:12px}
 .bonusbox b{display:block;font-size:14px;margin-top:2px}
-.bonusbox.new{border:2px solid #000;background:#000;color:#fff}
-.bonussum{font-size:11.5px;line-height:1.6;margin:0 0 9px;padding:6px 8px;border:1px dashed #999;color:#333}
-.typebox{border:1.5px solid #000;padding:9px;margin-bottom:12px;text-align:center}
-.typename{font-size:16px;font-weight:bold}
-.typesub{font-size:11.5px;color:#555;margin-top:4px;line-height:1.5}
-.endimg{display:block;width:100%;max-width:340px;margin:0 auto 14px;border:1px solid #000}
+.bonusbox.new{border:2px solid var(--accent);background:var(--accent);color:var(--ink)}
+.bonussum{font-size:11.5px;line-height:1.6;margin:0 0 9px;padding:6px 8px;border:2px dashed var(--dim);color:var(--muted)}
+.typebox{border:2px solid var(--line);background:var(--panel);padding:9px;margin-bottom:12px;text-align:center}
+.typename{font-size:16px;font-weight:bold;color:var(--accent)}
+.typesub{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+.endimg{display:block;width:100%;max-width:340px;margin:0 auto 14px;border:2px solid var(--line);background:#fff}
 
 /* ── 인트로 ── */
 #intro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
        padding:24px 18px;text-align:center}
-#intro .introimg{width:100%;max-width:360px;border:1.5px solid #000;margin-bottom:18px}
-#intro .dots{font-size:12px;color:#777;letter-spacing:4px;margin-bottom:14px}
-#intro button{border:1.5px solid #000;background:#fff;padding:13px;font:inherit;
-              font-size:15px;font-weight:bold;cursor:pointer;width:100%;max-width:280px}
-.condlbl{font-size:11px;color:#666;margin-bottom:6px;text-align:center}
-.cardimg{display:block;width:100%;max-width:300px;margin:0 auto 6px;border:1px solid #000}
-.cardurl{text-align:center;font-size:11.5px;color:#555;margin:8px 0 12px;word-break:break-all;
+#intro .introimg{width:100%;max-width:360px;border:2px solid var(--line);background:#fff;margin-bottom:18px}
+#intro .dots{font-size:12px;color:var(--muted);letter-spacing:4px;margin-bottom:14px}
+#intro button{border:2px solid var(--line);background:var(--panel);color:var(--text);padding:13px;font:inherit;
+              font-size:15px;font-weight:bold;cursor:pointer;width:100%;max-width:280px;box-shadow:0 4px 0 var(--sink)}
+#intro button:active{transform:translateY(4px);box-shadow:none}
+.condlbl{font-size:11px;color:var(--muted);margin-bottom:6px;text-align:center}
+.cardimg{display:block;width:100%;max-width:300px;margin:0 auto 6px;border:2px solid var(--line)}
+.cardurl{text-align:center;font-size:11.5px;color:var(--muted);margin:8px 0 12px;word-break:break-all;
          user-select:all;-webkit-user-select:all}
 
 /* ── 시작화면 ── */
 #title{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
        padding:24px 18px;text-align:center}
-#title h1{font-size:27px;letter-spacing:-1px;margin-bottom:6px}
-#title .tag{font-size:12.5px;color:#555;margin-bottom:20px}
-#title .titleimg{width:100%;max-width:360px;border:1.5px solid #000;margin-bottom:22px}
-#title .menu{display:flex;flex-direction:column;gap:9px;width:100%;max-width:280px}
-#title .menu button{border:1.5px solid #000;background:#fff;padding:13px;font:inherit;
-                    font-size:15px;font-weight:bold;cursor:pointer}
-#title .menu button:disabled{opacity:.3;cursor:not-allowed}
-#title .menu button .s{display:block;font-size:11px;font-weight:normal;color:#555;margin-top:3px}
-#title .foot{margin-top:20px;font-size:11px;color:#777}
-@media (hover:hover){ #title .menu button:not(:disabled):hover{background:#000;color:#fff} }
-#title .menu button:not(:disabled):active{background:#ddd}
+#title h1{font-size:27px;letter-spacing:-1px;margin-bottom:6px;color:var(--accent);text-shadow:3px 3px 0 var(--sink)}
+#title .tag{font-size:12.5px;color:var(--muted);margin-bottom:20px}
+#title .titleimg{width:100%;max-width:360px;border:2px solid var(--line);background:#fff;margin-bottom:22px}
+#title .menu{display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px}
+#title .menu button{border:2px solid var(--line);background:var(--panel);color:var(--text);padding:13px;font:inherit;
+                    font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 0 var(--sink)}
+#title .menu button:disabled{opacity:.3;cursor:not-allowed;box-shadow:none}
+#title .menu button .s{display:block;font-size:11px;font-weight:normal;color:var(--muted);margin-top:3px}
+#title .foot{margin-top:20px;font-size:11px;color:var(--muted)}
+@media (hover:hover){ #title .menu button:not(:disabled):hover{background:var(--accent);color:var(--ink)}
+                      #title .menu button:not(:disabled):hover .s{color:var(--ink)} }
+#title .menu button:not(:disabled):active{background:var(--raise);transform:translateY(4px);box-shadow:none}
 
 .center{text-align:center}
-.big{font-size:22px;font-weight:bold;text-align:center;margin:18px 0}
+.big{font-size:22px;font-weight:bold;text-align:center;margin:18px 0;color:var(--accent)}
 .sub{text-align:center;font-size:13px;margin-bottom:14px;white-space:pre-line}
 .btnrow{display:flex;gap:8px;margin-top:14px}
-.btnrow button{flex:1;border:1.5px solid #000;background:#fff;padding:10px;font:inherit;cursor:pointer}
-.btnrow button:hover{background:#f0f0f0}
+.btnrow button{flex:1;border:2px solid var(--line);background:var(--panel);color:var(--text);padding:10px;font:inherit;cursor:pointer;
+               box-shadow:0 4px 0 var(--sink)}
+.btnrow button:hover{background:var(--raise)}
+.btnrow button:active{transform:translateY(4px);box-shadow:none}
 </style>
 </head>
 <body>
@@ -704,8 +742,9 @@ const IMG = {
   // 인트로(프롤로그) — 새로하기 를 눌렀을 때만 순서대로 보여준다.
   // 빈 배열이면 인트로 없이 바로 게임이 시작된다. 장수는 자유.
   intro: ['img/intro/inst01.png', 'img/intro/inst02.png', 'img/intro/inst03.png'],
-  // 블록 그림 — 게임화면 선택지 위에 뜬다. 빈 문자열이면 그림 없이 동작한다.
-  blockDir: 'img/blk/',
+  // 블록 손그림 — 지금은 도트 장면(sceneTag)이 대신 뜬다. canvas 가 없는 환경에서만 쓰인다.
+  // 비워 두면 그림을 미리 받지 않는다. 손그림으로 돌아가려면 'img/blk/' 로 되돌리고 renderMain 의 sceneTag 를 blockImgTag 로.
+  blockDir: '',
   // 랜덤 이벤트 그림 — 아직 없다. 그리면 img/ev/ 에 EVENTS 의 id 로 넣고
   // 여기를 'img/ev/' 로 바꾸면 한 번에 살아난다. 안 그린 것은 <img> 가 스스로 사라진다.
   evDir: '',
@@ -1063,6 +1102,279 @@ const blockImgTag = () => {
   if (!IMG.blockDir) return '';
   const f = isWeekend() ? (S.dow === 6 ? BLKIMG.토요일 : BLKIMG.일요일) : BLKIMG[curBlock()];
   return f ? '<img class="blkimg" src="' + IMG.blockDir + f + '" alt="" onerror="this.remove()">' : '';
+};
+
+/* ── 도트 장면 ──────────────────────────────────────────
+   블록 손그림(img/blk/) 자리에 코드로 그린 64x48 도트를 띄운다.
+   장면 = 시간대 배경 + 주인공. 주인공은 멘탈·건강이 위험할수록 지쳐 보이고
+   (주의·위험 = 다크서클 + 식은땀, 임박 = 창백 + 머리 위 먹구름),
+   사무실 장면에서는 밀린 업무만큼 서류 더미가 높아진다.
+   도트 문법과 주인공 도트는 exit-company(회사에서 탈출하기)에서 가져왔다 — 같은 시리즈로 보이게.
+     '.' = 투명, 나머지 글자 = DOT_PAL 의 키
+   한 번 그린 장면은 dataURL 로 캐시한다. render 마다 <img> 가 새로 만들어져도 깜박이지 않는다.
+   시뮬레이터(가짜 DOM)에는 canvas 가 없어 blockImgTag 로 물러난다. */
+const SCN_W = 64, SCN_H = 48;
+const DOT_PAL = {
+  o: '#2b2230', h: '#3a2c28', s: '#f2c6a0', w: '#f4f4f0', n: '#34406b', r: '#d9434a', y: '#ffe27a', k: '#1b1b22',
+  // 사무실
+  f: '#8a93a6', g: '#7d8699', b: '#d8cbb5', c: '#c2b49c', m: '#9c8c72',
+  d: '#9a6a44', e: '#7a5234', t: '#3d4552', l: '#7fc8e8',
+  P: '#fbfbf7', L: '#9aa3b5', K: '#2b2b33', R: '#e04f5f', Y: '#f2b33d', A: '#e4e4e8', T: '#a9adb8',
+  // 컨디션 — 다크서클 · 창백한 피부 · 땀/빗방울
+  q: '#8a6f8f', Z: '#c9d3a8', C: '#6fb3e0',
+  // 집 — 낮 벽 · 밤 벽 · 나무 바닥 · 이불/소파
+  H: '#c9b8d8', I: '#b3a2c4', V: '#7a6c93', O: '#675a80', W: '#b98a5e', X: '#a3764d', B: '#5b8fd9', U: '#4a74b8',
+  // 하늘 — 아침 · 낮 · 밤 · 노을 2단
+  S: '#ffcf9a', D: '#9fd4f0', N: '#2d3561', E: '#f29a6b', F: '#a8608a',
+  // 바깥 — 건물 · 도로 · 인도 · 창틀 · 풀 · 나무
+  M: '#3b3550', G: '#4b4f5c', J: '#9a9aa3', v: '#5b6270', a: '#5aa564', i: '#2f6b3c', j: '#8a5a3a',
+};
+
+// 신입사원 — 정면. 다리 2프레임 (걸을 때만 번갈아)
+const HERO_BODY = [
+  '................',
+  '.....oooooo.....',
+  '....ohhhhhho....',
+  '...ohhhhhhhho...',
+  '...ohhhhhhhho...',
+  '...ohssssssho...',
+  '...ossossosso...',
+  '...osssssssso...',
+  '....osssssso....',
+  '...owwrwwrwwo...',
+  '..oswwwrrwwwso..',
+  '..oswwwyywwwso..',
+  '...onnnnnnnno...',
+];
+const HERO_LEGS_A = ['....onnoonno....', '....okkookko....', '....ooo..ooo....'];
+const HERO_LEGS_B = ['....okkoonno....', '....ooo.okko....', '.........ooo....'];
+const DOT_CLOUD = ['..LLLL..', '.LLLLLL.', 'LLLLLLLL', '.LLLLLL.'];
+
+// 3x5 숫자 (벽시계용)
+const DOT_FONT = {
+  0: ['111', '101', '101', '101', '111'], 1: ['010', '110', '010', '010', '111'],
+  2: ['111', '001', '111', '100', '111'], 3: ['111', '001', '111', '001', '111'],
+  4: ['101', '101', '111', '001', '001'], 5: ['111', '100', '111', '001', '111'],
+  6: ['111', '100', '111', '101', '111'], 7: ['111', '001', '010', '010', '010'],
+  8: ['111', '101', '111', '101', '111'], 9: ['111', '101', '111', '001', '111'],
+};
+
+// 블록 → 장면. 오전·오후업무는 같은 책상, 저녁은 평일·주말이 같다
+const 장면종류 = {
+  출근준비: 'bed', 오전업무: 'office', 점심: 'lunch', 오후업무: 'office', 퇴근: 'street', 저녁: 'night',
+  주말오전: 'lazy', 주말오후: 'park', 주말저녁: 'night',
+};
+
+/* 주인공 줄. pose: stand(서 있음) · walk(걷기) · sit(다리 없음 — 책상·식탁·소파가 아래를 가린다)
+   f: 0~3 애니메이션 프레임. 3 에서 눈을 깜빡인다. mood: 0 보통 · 1 지침 · 2 한계 */
+function 주인공줄(pose, f, mood, closed) {
+  let rows = HERO_BODY.slice();
+  if (pose === 'stand') rows = rows.concat(HERO_LEGS_A);
+  if (pose === 'walk') rows = rows.concat(f % 2 ? HERO_LEGS_B : HERO_LEGS_A);
+  const set = (y, x, ch) => { rows[y] = rows[y].slice(0, x) + ch + rows[y].slice(x + 1); };
+  if (mood >= 1) { set(7, 6, 'q'); set(7, 9, 'q'); }          // 다크서클
+  if (mood >= 2) { set(8, 7, 'o'); set(8, 8, 'o'); }          // 입이 벌어진다
+  if (closed || (f === 3 && mood < 2)) { set(6, 6, 's'); set(6, 9, 's'); }   // 눈 감음
+  return rows;
+}
+
+function 장면(b, mood, pile, f) {
+  const g = Array.from({ length: SCN_H }, () => Array(SCN_W).fill('b'));
+  const put = (x, y, ch) => { if (x >= 0 && x < SCN_W && y >= 0 && y < SCN_H) g[y][x] = ch; };
+  const fill = (x0, y0, w, h, ch) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(x, y, ch); };
+  const stamp = (rows, x0, y0, map) => rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== '.') put(x0 + x, y0 + y, (map && map[ch]) || ch);
+  }));
+  const text = (s, x, y, ch) => [...s].forEach(c => {
+    if (c === ':') { put(x, y + 1, ch); put(x, y + 3, ch); x += 2; return; }
+    (DOT_FONT[c] || []).forEach((row, dy) => [...row].forEach((bit, dx) => { if (bit === '1') put(x + dx, y + dy, ch); }));
+    x += 4;
+  });
+  const 벽시계 = (x, y) => { fill(x, y, 21, 9, 'o'); fill(x + 1, y + 1, 19, 7, 'K'); text(BLK[b].t, x + 2, y + 2, 'R'); };
+  const 창문 = (x, y, w, h, sky, extra) => {
+    fill(x, y, w, h, 'v'); fill(x + 1, y + 1, w - 2, h - 2, sky);
+    if (extra) extra();
+    fill(x + (w >> 1), y, 1, h, 'v'); fill(x, y + (h >> 1), w, 1, 'v');
+  };
+  // 벽 30줄 + 그림자 2 + 걸레받이 2 + 바닥 14
+  const 실내 = (wall, shade, floor, seam) => {
+    fill(0, 0, SCN_W, 30, wall); fill(0, 30, SCN_W, 2, shade); fill(0, 32, SCN_W, 2, 'm'); fill(0, 34, SCN_W, 14, floor);
+    for (let y = 34; y < SCN_H; y++) for (let x = 0; x < SCN_W; x++) {
+      if (floor === 'W' ? (y - 34) % 4 === 3 || (x + (y >> 2) * 9) % 16 === 0 : (x * 7 + y * 13) % 23 === 0) put(x, y, seam);
+    }
+  };
+  const 주인공 = (x, y, pose, closed) => {
+    stamp(주인공줄(pose, f, mood, closed), x, y, mood >= 2 ? { s: 'Z' } : null);
+    if (mood === 1) { put(x + 13, y + 3 + (f % 2), 'C'); put(x + 13, y + 4 + (f % 2), 'C'); }   // 식은땀
+    if (mood >= 2) {                                                                          // 먹구름 + 비
+      stamp(DOT_CLOUD, x + 4, y - 6);
+      const r = f % 2;
+      put(x + 5 + r, y - 2 + r, 'C'); put(x + 8 + r, y - 1 - r, 'C'); put(x + 10 - r, y - 2 + r, 'C');
+    }
+  };
+  // 책상·식탁 상판 (y=33 부터)
+  const 상판 = (top, edge) => {
+    fill(0, 33, SCN_W, 1, 'o'); fill(0, 34, SCN_W, 2, top); fill(0, 36, SCN_W, 1, edge); fill(0, 37, SCN_W, 1, 'o');
+  };
+
+  const kind = 장면종류[b] || 'office';
+
+  if (kind === 'office') {
+    실내('b', 'c', 'f', 'g');
+    창문(44, 3, 17, 14, 'D', () => { fill(47, 6, 5, 2, 'P'); fill(46, 7, 7, 1, 'P'); });
+    벽시계(20, 3);
+    // 서류 더미 — 밀린 업무 20 마다 5줄씩
+    const h = 3 + pile * 5;
+    for (let i = 0; i < h; i++) {
+      const y = 32 - i, dx = (i % 10 < 5) ? 0 : 1;
+      fill(3 + dx, y, 10, 1, i % 2 ? 'L' : 'P'); put(3 + dx, y, 'o'); put(12 + dx, y, 'o');
+    }
+    fill(3 + ((h - 1) % 10 < 5 ? 0 : 1), 32 - h, 10, 1, 'o');
+    stamp(['oooo', 'owwo', 'oddo', 'owwo'], 14, 29);                  // 커피
+    주인공(18, 20, 'sit');
+    // 모니터 — 코드 줄이 프레임마다 한 줄씩 늘어난다
+    fill(38, 22, 12, 10, 'o'); fill(39, 23, 10, 8, 't'); fill(40, 24, 8, 6, 'l');
+    for (let i = 0; i <= f && i < 3; i++) fill(41 + (i % 2), 25 + i * 2, 4 + (i * 2) % 3, 1, 'w');
+    fill(43, 32, 2, 1, 't');
+    상판('d', 'e');
+    fill(3, 38, SCN_W - 6, 7, 'e'); fill(2, 38, 1, 7, 'o'); fill(SCN_W - 3, 38, 1, 7, 'o'); fill(2, 45, SCN_W - 4, 1, 'o');
+    // 키보드 + 타자 치는 손
+    fill(20, 34, 12, 1, 'K'); for (let x = 21; x < 31; x += 2) put(x, 34, 'L');
+    put(21, f % 2 ? 33 : 34, mood >= 2 ? 'Z' : 's'); put(30, f % 2 ? 34 : 33, mood >= 2 ? 'Z' : 's');
+  } else if (kind === 'lunch') {
+    실내('b', 'c', 'f', 'g');
+    창문(44, 3, 17, 14, 'D', () => fill(46, 5, 4, 3, 'y'));
+    벽시계(20, 3);
+    주인공(24, 20, 'sit');
+    상판('A', 'T');
+    fill(6, 38, 2, 8, 'o'); fill(56, 38, 2, 8, 'o');
+    fill(14, 33, 36, 1, 'R');                                          // 쟁반
+    stamp(['.oooooo.', 'oPPPPPPo', 'oAAAAAAo', '.oAAAAo.'], 15, 29);   // 밥
+    stamp(['.oooooo.', 'oYYYYYYo', 'ojjjjjjo', '.ojjjjo.'], 41, 29);   // 국
+    // 숟가락을 입으로 — 손이 오르내린다
+    const hy = f % 2 ? 29 : 32;
+    put(36, hy, mood >= 2 ? 'Z' : 's'); put(35, hy - 1, 'T'); put(34, hy - 2, 'T');
+  } else if (kind === 'street') {
+    fill(0, 0, SCN_W, 12, 'F'); fill(0, 12, SCN_W, 24, 'E');
+    stamp(['..yyyyy..', '.yyyyyyy.', 'yyyyyyyyy'], 27, 19);            // 지는 해
+    [[0, 10, 14], [11, 8, 20], [20, 12, 10], [33, 9, 17], [43, 13, 8], [57, 7, 15]].forEach(([x, w, top]) => {
+      fill(x, top, w, 36 - top, 'M');
+      for (let yy = top + 2; yy < 34; yy += 4) for (let xx = x + 2; xx < x + w - 1; xx += 3) {
+        if ((xx * 7 + yy * 3) % 5 < 2) fill(xx, yy, 1, 2, 'y');           // 아직 불 켜진 사무실
+      }
+    });
+    fill(0, 36, SCN_W, 6, 'J'); for (let x = 3; x < SCN_W; x += 8) fill(x, 36, 1, 6, 'L');
+    fill(0, 42, SCN_W, 1, 'o'); fill(0, 43, SCN_W, 5, 'G');
+    for (let x = -8 + ((4 - f) % 4) * 2; x < SCN_W; x += 8) fill(x, 45, 4, 1, 'y');   // 차선이 흘러가 걷는 느낌
+    주인공(24, 24, 'walk');
+  } else if (kind === 'night') {
+    실내('V', 'O', 'W', 'X');
+    창문(40, 4, 18, 14, 'N', () => {
+      stamp(['.yy', 'yy.', 'yy.', '.yy'], 43, 7);
+      put(50, 6, 'P'); put(54, 11, f % 2 ? 'P' : 'N'); put(47, 14, f % 2 ? 'N' : 'P');
+    });
+    벽시계(4, 4);
+    fill(2, 25, 30, 5, 'U');                                           // 소파 등받이
+    주인공(9, 16, 'sit');
+    fill(2, 30, 30, 6, 'B'); fill(2, 30, 30, 1, 'o');
+    fill(0, 26, 3, 11, 'U'); fill(31, 26, 3, 11, 'U');
+    fill(4, 36, 2, 3, 'o'); fill(28, 36, 2, 3, 'o');
+    // TV — 화면 빛이 깜빡인다
+    fill(38, 36, 22, 4, 'e'); fill(38, 36, 22, 1, 'o');
+    fill(40, 23, 18, 12, 'K'); fill(42, 25, 14, 8, f % 2 ? 'l' : 'D'); fill(48, 35, 2, 1, 'K');
+  } else if (kind === 'bed' || kind === 'lazy') {
+    실내('H', 'I', 'W', 'X');
+    if (kind === 'bed') 창문(38, 4, 20, 15, 'S', () => stamp(['.yy.', 'yyyy', 'yyyy', '.yy.'], 41, 7));
+    else 창문(38, 4, 20, 15, 'D', () => { fill(41, 6, 5, 2, 'P'); fill(40, 7, 7, 1, 'P'); });
+    벽시계(4, 4);
+    // 침대
+    fill(2, 24, 3, 18, 'o'); fill(3, 25, 1, 16, 'e');
+    fill(4, 31, 26, 1, 'o'); fill(4, 32, 26, 7, 'w'); fill(4, 39, 26, 2, 'e'); fill(4, 41, 26, 1, 'o');
+    fill(5, 42, 2, 2, 'o'); fill(27, 42, 2, 2, 'o');
+    fill(5, 29, 9, 3, 'P'); fill(5, 28, 9, 1, 'o');                      // 베개
+    if (kind === 'bed') {
+      fill(16, 31, 14, 6, 'B'); fill(16, 36, 14, 1, 'U');               // 걷어찬 이불
+      if (f % 2 === 0) {                                               // 알람이 울린다
+        put(2, 5, 'R'); put(1, 6, 'R'); put(2, 7, 'R'); put(26, 5, 'R'); put(27, 6, 'R'); put(26, 7, 'R');
+      }
+      주인공(32, 26, 'stand');
+    } else {
+      // 주말 오전 — 이불 속에서 안 나온다
+      주인공(1, 21, 'sit', true);
+      fill(4, 30, 26, 9, 'B'); fill(4, 30, 26, 1, 'o'); fill(4, 38, 26, 1, 'U');
+      const zy = 18 - f;                                               // Zz 가 올라간다
+      stamp(['ooo', '.o.', 'ooo'], 16, zy); if (f >= 2) stamp(['oo', 'oo'], 20, zy - 4);
+    }
+  } else if (kind === 'park') {
+    fill(0, 0, SCN_W, 30, 'D');
+    stamp(['.yyy.', 'yyyyy', 'yyyyy', 'yyyyy', '.yyy.'], 4, 3);
+    const cx = 18 + (f >> 1);                                          // 구름이 천천히 흐른다
+    fill(cx, 6, 8, 2, 'P'); fill(cx - 2, 7, 12, 2, 'P');
+    fill(0, 30, SCN_W, 18, 'a');
+    for (let y = 31; y < SCN_H; y += 3) for (let x = (y * 5) % 7; x < SCN_W; x += 7) put(x, y, 'i');
+    fill(51, 20, 4, 14, 'j');
+    stamp(['....aaaa....', '..aaaaaaaa..', '.aaaaiaaaaa.', 'aaaiaaaaiaaa', 'aaaaaaaaaaaa', 'aiaaaaiaaaia',
+           '.aaaaaaaaaa.', '..aaiaaaa...', '....aaaa....'], 47, 9);
+    fill(4, 33, 14, 2, 'e'); fill(4, 35, 1, 4, 'o'); fill(17, 35, 1, 4, 'o');   // 벤치
+    주인공(26, 24, 'walk');
+  }
+  return g;
+}
+
+const 장면캐시 = {};
+function 장면URL(b, mood, pile, f) {
+  const k = b + '|' + mood + '|' + pile + '|' + f;
+  if (!장면캐시[k]) {
+    const cv = document.createElement('canvas');
+    cv.width = SCN_W; cv.height = SCN_H;
+    const c = cv.getContext('2d');
+    장면(b, mood, pile, f).forEach((row, y) => row.forEach((ch, x) => {
+      c.fillStyle = DOT_PAL[ch] || '#000';
+      c.fillRect(x, y, 1, 1);
+    }));
+    장면캐시[k] = cv.toDataURL();
+  }
+  return 장면캐시[k];
+}
+
+let 장면가능캐시 = null;
+const 장면가능 = () => {
+  if (장면가능캐시 === null) {
+    const cv = document.createElement('canvas');
+    장면가능캐시 = !!(cv && typeof cv.getContext === 'function' && typeof cv.toDataURL === 'function');
+  }
+  return 장면가능캐시;
+};
+
+// 컨디션 = 멘탈·건강 중 더 나쁜 쪽의 위험 단계. 서류 더미 = 밀린 업무 20 마다 한 단
+function 장면상태() {
+  const lv = Math.max(위험단계('멘탈'), 위험단계('건강'));
+  return { mood: lv >= 3 ? 2 : lv >= 1 ? 1 : 0, pile: Math.min(4, Math.floor(Math.max(0, S.work) / 20)) };
+}
+
+/* 0.45초마다 프레임을 넘긴다. 타이머는 한 번만 만들고, 메인 화면이 아닐 때는 아무것도 안 한다.
+   움직임 줄이기 설정이면 첫 프레임에 멈춰 둔다. */
+let 장면프레임 = 0, 장면타이머 = null;
+function 장면돌리기() {
+  if (장면타이머 || typeof setInterval !== 'function') return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  장면타이머 = setInterval(() => {
+    const el = document.getElementById('scene');
+    if (!el || SCREEN !== 'game' || TAB !== 'main' || !S || S.phase === 'ending') return;
+    const b = curBlock();
+    if (!b) return;
+    장면프레임 = (장면프레임 + 1) % 4;
+    const st = 장면상태();
+    el.src = 장면URL(b, st.mood, st.pile, 장면프레임);
+  }, 450);
+}
+
+const sceneTag = () => {
+  const b = curBlock();
+  if (!장면가능() || !b) return blockImgTag();
+  장면돌리기();
+  const st = 장면상태();
+  return '<img class="scene" id="scene" src="' + 장면URL(b, st.mood, st.pile, 장면프레임) + '" alt="">';
 };
 
 // 현재 블록의 선택지 목록
@@ -1642,7 +1954,7 @@ function gauge(nm, v, max, danger, over) {
   const fx = d ? (nm === '업무' ? ' drain' : ' refill') : '';
   const lv = fx ? 0 : 위험단계(nm);
   const ph = d ? d : lv >= 2 ? 위상(lv === 3 ? 700 : 1400) : '';
-  return '<div class="g"><span class="nm">' + nm + (lv ? '<span class="bang">!</span>' : '') + '</span>'
+  return '<div class="g ' + ({ 멘탈: 'g-m', 건강: 'g-h', 업무: 'g-w' }[nm] || '') + '"><span class="nm">' + nm + (lv ? '<span class="bang">!</span>' : '') + '</span>'
     + '<span class="track"><span class="fill' + (danger && !fx ? ' warn' : '') + fx
     + (lv >= 2 ? ' lv' + lv : '')
     + '" style="width:' + pct + '%' + (ph ? ';animation-delay:' + ph : '') + '"></span></span>'
@@ -1674,7 +1986,7 @@ function renderMain() {
         + '<div class="blockname">' + BLK[b].label + ' (' + BLK[b].h + '시간)'
         + (S.late && b === '오전업무' ? ' · 지각으로 1시간' : '') + '</div>'
         + '<div class="delta">' + (S.lastDelta ? esc(S.lastDelta) : '&nbsp;') + '</div>'
-        + blockImgTag()
+        + sceneTag()
         + '<div class="cards">';
   // 터치기기용 압축 금액 표기: 3000 -> -3천 / 140000 -> -14만
   const open = choices();
@@ -1766,7 +2078,7 @@ function renderItems() {
     h += '<div class="slot"><span class="cnt">' + n + '</span>' + id
        + '<button data-use="' + id + '"' + (ok ? '' : ' disabled') + '>' + lbl + '</button></div>';
   });
-  h += '</div><p style="font-size:12px;margin-top:10px;color:#333">'
+  h += '</div><p style="font-size:12px;margin-top:10px;color:var(--muted)">'
      + '<h3>아이템 효과</h3><table>'
      + row('약', '건강 +' + Math.round(M.아이템효과()) + (sk('약 제조') ? '  (부작용 없음)' : ' · 멘탈 -10'))
      + row('담배', '멘탈 +' + Math.round(M.아이템효과()) + (sk('담배 제조') ? '  (부작용 없음)' : ' · 건강 -10'))
@@ -1805,7 +2117,7 @@ function renderShop() {
                     + '>판매</button>' : '')
        + '</div></div>';
   });
-  h += '<p style="font-size:11.5px;color:#333;margin-top:8px">'
+  h += '<p style="font-size:11.5px;color:var(--muted);margin-top:8px">'
      + 'AI 업무 -40 · 부적 지각/발각 반감 + 복권 소액당첨률↑ (비소모성, 1개만)</p>';
   h += '</div>';
   const ep = CFG.부동산가;
