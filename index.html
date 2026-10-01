@@ -1130,24 +1130,25 @@ const DOT_PAL = {
   M: '#3b3550', G: '#4b4f5c', J: '#9a9aa3', v: '#5b6270', a: '#5aa564', i: '#2f6b3c', j: '#8a5a3a',
 };
 
-// 신입사원 — 정면. 다리 2프레임 (걸을 때만 번갈아)
+// 주인공(여자) — 정면, 양갈래 머리(빨간 리본) + 치마. 다리 2프레임 (걸을 때만 번갈아)
+// exit-company 신입사원 도트에서 머리·하체만 바꿨다. 눈 위치(6행 6·9열)는 같다 — 주인공줄()이 거기를 고친다
 const HERO_BODY = [
   '................',
   '.....oooooo.....',
-  '....ohhhhhho....',
-  '...ohhhhhhhho...',
-  '...ohhhhhhhho...',
-  '...ohssssssho...',
-  '...ossossosso...',
+  '.oo.ohhhhhho.oo.',
+  'ohhohhhhhhhhohho',
+  '.ohrhhhhhhhhrho.',
+  '.ohohssssssohho.',
+  '..oossossossoo..',
   '...osssssssso...',
   '....osssssso....',
   '...owwrwwrwwo...',
   '..oswwwrrwwwso..',
   '..oswwwyywwwso..',
-  '...onnnnnnnno...',
+  '..onnnnnnnnnno..',
 ];
-const HERO_LEGS_A = ['....onnoonno....', '....okkookko....', '....ooo..ooo....'];
-const HERO_LEGS_B = ['....okkoonno....', '....ooo.okko....', '.........ooo....'];
+const HERO_LEGS_A = ['.....os..so.....', '....okk..kko....', '....ooo..ooo....'];
+const HERO_LEGS_B = ['.....os..so.....', '....okk..so.....', '....ooo.okko....'];
 const DOT_CLOUD = ['..LLLL..', '.LLLLLL.', 'LLLLLLLL', '.LLLLLL.'];
 
 // 3x5 숫자 (벽시계용)
@@ -1205,7 +1206,7 @@ function 장면(b, mood, pile, f) {
   };
   const 주인공 = (x, y, pose, closed) => {
     stamp(주인공줄(pose, f, mood, closed), x, y, mood >= 2 ? { s: 'Z' } : null);
-    if (mood === 1) { put(x + 13, y + 3 + (f % 2), 'C'); put(x + 13, y + 4 + (f % 2), 'C'); }   // 식은땀
+    if (mood === 1) { put(x + 15, y + 5 + (f % 2), 'C'); put(x + 15, y + 6 + (f % 2), 'C'); }   // 식은땀 (양갈래 바깥)
     if (mood >= 2) {                                                                          // 먹구름 + 비
       stamp(DOT_CLOUD, x + 4, y - 6);
       const r = f % 2;
@@ -1273,7 +1274,7 @@ function 장면(b, mood, pile, f) {
       stamp(['.yy', 'yy.', 'yy.', '.yy'], 43, 7);
       put(50, 6, 'P'); put(54, 11, f % 2 ? 'P' : 'N'); put(47, 14, f % 2 ? 'N' : 'P');
     });
-    벽시계(4, 4);
+    벽시계(19, 1);                                                     // 소파 위는 먹구름 자리라 비켜 둔다
     fill(2, 25, 30, 5, 'U');                                           // 소파 등받이
     주인공(9, 16, 'sit');
     fill(2, 30, 30, 6, 'B'); fill(2, 30, 30, 1, 'o');
