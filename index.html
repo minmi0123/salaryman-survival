@@ -2494,6 +2494,8 @@ function closeDexPop() { $('overlay').classList.remove('on'); DEXPOP = null; }
    ══════════════════════════════════════════════════════════════ */
 const CARD = 1080;
 const SHARE_URL = 'https://minlabnote.com/salaryman-survival/';
+// 카드에 그리는 글자는 https:// 와 끝 / 를 뗀다. 주소는 위 한 줄만 고친다 (og·twitter 태그와 README 는 따로)
+const SHARE_LABEL = SHARE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
 const 카드폰트 = w => w + ' "Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif';
 
 // 긴 글을 폭에 맞춰 줄바꿈
@@ -2564,7 +2566,7 @@ function 카드그리기(mode, cb) {
     c.fillText('엔딩 도감  ' + got + ' / ' + DEX_ALL.length, CARD / 2, v ? 956 : 872);
 
     c.fillStyle = '#555'; c.font = 카드폰트('26px');
-    c.fillText('minlabnote.com/salaryman-survival', CARD / 2, CARD - 48);
+    c.fillText(SHARE_LABEL, CARD / 2, CARD - 48);
     cb(cv);
   };
 
@@ -2603,7 +2605,7 @@ function 카드그리기(mode, cb) {
       c.fillText(글, cx + 폭 / 2, cy + 높 / 2 + size / 3);
     });
     c.fillStyle = '#555'; c.font = 카드폰트('26px');
-    c.fillText('minlabnote.com/salaryman-survival', CARD / 2, CARD - 48);
+    c.fillText(SHARE_LABEL, CARD / 2, CARD - 48);
     return cb(cv);
   }
 
