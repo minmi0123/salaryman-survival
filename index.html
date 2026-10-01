@@ -106,8 +106,12 @@ body{background:var(--bg);color:var(--text);
        image-rendering:pixelated;image-rendering:crisp-edges}
 
 /* 타이틀·취침 팝업의 도트 — 손그림용 흰 바탕·부드러운 보간을 덮어쓴다 */
-.dotimg,.pop .popimg.dotimg,#title .titleimg.dotimg{aspect-ratio:4/3;background:var(--sink);
+.dotimg,.pop .popimg.dotimg,#title .titleimg.dotimg,.endimg.dotimg,#intro .introimg.dotimg{aspect-ratio:4/3;background:var(--sink);
        image-rendering:pixelated;image-rendering:crisp-edges}
+
+/* 이야기 장면 대사 · 인트로 제목 — 손그림 속 글자를 그림 밖으로 뺐다 */
+.endsay{text-align:center;font-size:13px;color:var(--muted);margin:-6px 0 14px;white-space:pre-line;line-height:1.6}
+.introcap{font-size:18px;font-weight:bold;color:var(--accent);margin-bottom:14px}
 
 /* ── 선택지 카드 ── */
 .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
@@ -677,11 +681,47 @@ const ENDINFO = {
                       + '또는 총 경고 ' + CFG.총경고임계 + '회 (모든 경고 합산)' },
 };
 
-// 엔딩 그림 경로. endDir 가 비어 있으면 '' 를 돌려줘 아예 부르지 않는다
+// 엔딩 대사 — 손그림 속 글자를 옮겼다 (맞춤법도 그림 그대로). 도트 그림 아래에 뜬다
+const ENDSAY = {
+  '하극상': '사장 "자네 미쳤나?!"\n"나와!"',
+  '연금이나타자': '"내인생..."\n팀원들 "팀장님!!"',
+  '직장인 왜하는데ㅋㅋ': '"가~♡"',
+  '이제 이게 본업인데요?': '"까!"  "뀨!"',
+  '제가 좀 잘 만들어요': '손님 "재고 있나요...?"\n"얼마까지 보고 왔어요?"',
+  '저도 이제 대표입니다': '"일 배달이요!"\n"어어..."',
+  '회사는 헬스장 가는 길에': '"운동하고 올게요"\n동료 "그...래..."',
+  '이 또한 지나가리라': '웅성 웅성',
+  '꼰대임원': '"얘들아 주말에 등산가자~"',
+  '헬스장사장님': '"아홉, 아홉, 아홉"\n회원 "그만..."',
+  '치킨집사장님': '손님 "닭다리는요..??"\n"그런거 없는데요"',
+  '헬창조직보스': '"충성!"  "충성!"',
+  '출근이 곧 수행': '사장 "일안해?!"\n"일은 나쁜거에요..."',
+  '구독자가 곧 신도': '"좋댓구알~"',
+  '가진 게 없으니 잃을 것도 없다': '집주인 "월세는요...?"\n"월세는 나쁜거에요..."',
+  '이거 드시고 구원받으세요': '"좋은거에요..."',
+  '건물주': '"사장님 월세 천만원!!"\n사장 "네...?!"',
+  '퇴사': '(사직서)',
+  '아사': '동료 "뭐야!!"\n"밥좀...."',
+  '백수': '집주인 "나가!"\n"우엥..."',
+  '짤림': '사장 "퇴직금은 못줘"\n"신고할게요"',
+};
+const 엔딩키 = nm => ENDINFO[nm] ? '엔딩:' + ENDINFO[nm].img.replace('.png', '') : '';
+
+// 엔딩 그림 경로. 도트로 그릴 수 있으면 첫 프레임 dataURL (공유 카드용).
+// endDir 가 비어 있으면 '' 를 돌려줘 아예 부르지 않는다
 const endSrc = nm => {
   const i = ENDINFO[nm];
+  if (i && 장면가능()) return 장면URL(엔딩키(nm), 0, 0, 0);
   return (IMG.endDir && i && i.img) ? IMG.endDir + i.img : '';
 };
+// 엔딩 그림 + 대사. 도트가 되면 움직이는 도트, 아니면 손그림 파일
+function 엔딩그림(nm, cls) {
+  const say = ENDSAY[nm] ? '<div class="endsay">' + esc(ENDSAY[nm]) + '</div>' : '';
+  const dot = ENDINFO[nm] ? 도트태그(엔딩키(nm), cls) : '';
+  if (dot) return dot + say;
+  const src = (IMG.endDir && ENDINFO[nm]) ? IMG.endDir + ENDINFO[nm].img : '';
+  return src ? '<img class="' + cls + '" src="' + src + '" alt="" onerror="this.remove()">' + say : '';
+}
 /* 자주 뜨는 그림을 미리 받아 캐시에 올린다.
    innerHTML 을 갈아끼울 때 <img> 가 새로 만들어지는데, 캐시에 있으면
    빈 칸 없이 바로 그려져 깜박임이 크게 준다.
@@ -691,14 +731,11 @@ function 그림미리받기() {
   const list = [];
   if (IMG.sleep && !장면가능()) list.push(IMG.sleep);   // 도트 취침 장면이 대신 뜬다
   if (IMG.blockDir) Object.keys(BLKIMG).forEach(k => list.push(IMG.blockDir + BLKIMG[k]));
-  (IMG.intro || []).forEach(src => list.push(src));
+  if (!장면가능()) (IMG.intro || []).forEach(src => list.push(src));   // 도트 인트로가 대신 뜬다
   list.forEach(src => { const im = new Image(); im.src = src; });
 }
 
-const endImgTag = nm => {
-  const src = endSrc(nm);
-  return src ? '<img class="endimg" src="' + src + '" alt="" onerror="this.remove()">' : '';
-};
+const endImgTag = nm => 엔딩그림(nm, 'endimg');
 
 const 경고대사 = {
   멘탈: ['요즘 좀 힘드니?', '회사생활이 다 그래', '그럴거면 나가라'],
@@ -744,7 +781,8 @@ const IMG = {
   // 그림을 img/end/ 에 넣은 뒤 'img/end/' 로 바꾸면 21종이 동시에 살아난다.
   // 아직 안 그린 것은 <img> 가 스스로 사라지므로 하나씩 채워도 된다.
   endDir: 'img/end/',
-  // 인트로(프롤로그) — 새로하기 를 눌렀을 때만 순서대로 보여준다.
+  // 인트로(프롤로그) — 새로하기 를 눌렀을 때만 순서대로 보여준다. 지금은 도트(INTRO_DOT)가 대신 뜨고,
+  // 이 배열은 장수와 canvas 없을 때의 손그림으로만 쓰인다.
   // 빈 배열이면 인트로 없이 바로 게임이 시작된다. 장수는 자유.
   intro: ['img/intro/inst01.png', 'img/intro/inst02.png', 'img/intro/inst03.png'],
   // 블록 손그림 — 지금은 도트 장면(sceneTag)이 대신 뜬다. canvas 가 없는 환경에서만 쓰인다.
@@ -1226,7 +1264,7 @@ function 장면(b, mood, pile, f) {
     fill(0, 33, SCN_W, 1, 'o'); fill(0, 34, SCN_W, 2, top); fill(0, 36, SCN_W, 1, edge); fill(0, 37, SCN_W, 1, 'o');
   };
 
-  const kind = 장면종류[b] || 'office';
+  const kind = 장면종류[b] || (/^(인트로|엔딩:)/.test(b) ? 'story' : 'office');
 
   if (kind === 'office') {
     실내('b', 'c', 'f', 'g');
@@ -1348,9 +1386,414 @@ function 장면(b, mood, pile, f) {
            '.aaaaaaaaaa.', '..aaiaaaa...', '....aaaa....'], 47, 9);
     fill(4, 33, 14, 2, 'e'); fill(4, 35, 1, 4, 'o'); fill(17, 35, 1, 4, 'o');   // 벤치
     주인공(26, 24, 'walk');
+  } else if (kind === 'story') {
+    이야기장면(b, { put, fill, stamp, 실내, 창문, text, f });
   }
   return g;
 }
+
+
+/* ── 이야기 장면 — 인트로 3장 · 엔딩 21장 ───────────────────────
+   손그림(img/intro, img/end)을 같은 64x48 도트로 옮겼다. 구도는 손그림을 따랐다.
+   손그림 속 대사는 도트로 못 쓰므로 그림 밖 글자로 뺐다 — INTRO_DOT.say · ENDSAY.
+   키: '인트로1'~'인트로3', '엔딩:end01'~'엔딩:end21' (ENDINFO 의 파일 이름과 같은 번호) */
+
+// 남자 몸 — exit-company 신입사원 원본 그대로. 동료·사장·손님 등은 색만 바꾼다 (NPC)
+const MAN_BODY = [
+  '................',
+  '.....oooooo.....',
+  '....ohhhhhho....',
+  '...ohhhhhhhho...',
+  '...ohhhhhhhho...',
+  '...ohssssssho...',
+  '...ossossosso...',
+  '...osssssssso...',
+  '....osssssso....',
+  '...owwrwwrwwo...',
+  '..oswwwrrwwwso..',
+  '..oswwwyywwwso..',
+  '...onnnnnnnno...',
+];
+const MAN_LEGS_A = ['....onnoonno....', '....okkookko....', '....ooo..ooo....'];
+const MAN_LEGS_B = ['....okkoonno....', '....ooo.okko....', '.........ooo....'];
+// 기도 트리 — 양갈래 대신 정수리 상투 (0~6행을 바꾼다)
+const BUN_TOP = [
+  '......oooo......',
+  '.....ohhhho.....',
+  '....oohhhhoo....',
+  '...ohhhhhhhho...',
+  '...ohhhhhhhho...',
+  '...ohssssssho...',
+  '...ossossosso...',
+];
+// 운동 트리 — 9~11행을 넓은 어깨 + 굵은 팔로
+const MUSCLE_ARMS = [
+  '..ooowrwwrwooo..',
+  '.osssowrrwossso.',
+  '.ossoowyywoosso.',
+];
+const LOTUS_LEGS = ['..onnnnnnnnnno..', '.onnnnnnnnnnnno.', '..oooooooooooo..'];
+// 작은 사람 (7x8) — 군중·화면 속 얼굴
+const DOT_MINI = ['.ooooo.', 'ohhhhho', 'osososo', 'ossssso', '.ooooo.', '.owwwo.', '.owwwo.', '..o.o..'];
+const NPC = {
+  사장:   { h: 'L', w: 't', r: 'R', y: 't', n: 't' },   // 흰머리 + 짙은 정장 + 빨간 넥타이
+  동료:   { h: 'j', w: 'l', r: 'B', y: 'l', n: 'v' },
+  신입2:  { h: 'h', w: 'P', r: 'B', y: 'P', n: 'n' },
+  신입3:  { h: 'e', w: 'a', r: 'i', y: 'a', n: 'v' },
+  집주인: { h: 'L', w: 'Y', r: 'e', y: 'Y', n: 'e' },
+  손님:   { h: 'e', w: 'E', r: 'E', y: 'E', n: 'v' },
+  조직:   { h: 'K', w: 'K', r: 'K', y: 'K', n: 'K' },
+};
+// 말풍선 글자 ('1' = 칠함)
+const DOT_GLYPH = {
+  '!': ['1', '1', '1', '0', '1'],
+  '?': ['111', '001', '011', '000', '010'],
+  '!?': ['10111', '10001', '10011', '00000', '10010'],
+  '♥': ['101', '111', '111', '010'],
+  '…': ['10101'],
+  'X': ['101', '101', '010', '101', '101'],
+  '♪': ['011', '010', '010', '110', '110'],
+  '9': DOT_FONT[9],
+};
+
+/* 사람 줄. o = { man, pose: stand|walk|sit|lotus, face, bun, muscle, mustache, f }
+   face: happy(입 벌림) · sad(눈물) · angry(눈썹) · shock · zen(감은 눈) · smug · weak(다크서클) · shades(선글라스) */
+function 인물줄(o) {
+  const f = o.f || 0;
+  let rows = (o.man ? MAN_BODY : HERO_BODY).slice();
+  if (o.bun) rows = BUN_TOP.concat(rows.slice(7));
+  if (o.muscle) rows = rows.slice(0, 9).concat(MUSCLE_ARMS, rows.slice(12));
+  const pose = o.pose || 'stand';
+  const legA = o.man ? MAN_LEGS_A : HERO_LEGS_A, legB = o.man ? MAN_LEGS_B : HERO_LEGS_B;
+  if (pose === 'stand') rows = rows.concat(legA);
+  if (pose === 'walk') rows = rows.concat(f % 2 ? legB : legA);
+  if (pose === 'lotus') rows = rows.concat(LOTUS_LEGS);
+  const set = (y, x, ch) => { rows[y] = rows[y].slice(0, x) + ch + rows[y].slice(x + 1); };
+  if (o.mustache) for (let x = 6; x <= 9; x++) set(7, x, 'o');
+  const fc = o.face;
+  if (fc === 'happy') { set(7, 7, 'R'); set(7, 8, 'R'); }
+  if (fc === 'sad') { set(7, 6, 'C'); set(7, 9, 'C'); set(8, 7, 'o'); set(8, 8, 'o'); }
+  if (fc === 'angry') { set(5, 6, 'o'); set(5, 9, 'o'); set(8, 7, 'o'); set(8, 8, 'o'); }
+  if (fc === 'shock') { set(8, 7, 'o'); set(8, 8, 'o'); if (!o.mustache) { set(7, 7, 'o'); set(7, 8, 'o'); } }
+  if (fc === 'zen' || fc === 'smug') { set(6, 5, 'o'); set(6, 10, 'o'); }
+  if (fc === 'smug') set(7, 8, 'o');
+  if (fc === 'weak') { set(7, 6, 'q'); set(7, 9, 'q'); set(8, 7, 'o'); set(8, 8, 'o'); }
+  if (fc === 'shades') { for (let x = 4; x <= 11; x++) set(6, x, x === 7 || x === 8 ? 'o' : 'K'); }
+  return rows;
+}
+
+function 이야기장면(b, H) {
+  const { put, fill, stamp, 실내, 창문, text, f } = H;
+  const 사람 = (x, y, o) => stamp(인물줄(Object.assign({ f }, o)), x, y, Object.assign({}, o.colors, o.pale ? { s: 'Z' } : null));
+  const 꼬마 = (x, y, colors) => stamp(DOT_MINI, x, y, colors);
+  const 말풍선 = (x, y, gl) => {
+    const rows = DOT_GLYPH[gl], w = rows[0].length + 4, hh = rows.length + 4;
+    fill(x, y, w, hh, 'o'); fill(x + 1, y + 1, w - 2, hh - 2, 'P');
+    rows.forEach((r, dy) => [...r].forEach((bit, dx) => { if (bit === '1') put(x + 2 + dx, y + 2 + dy, 'o'); }));
+    put(x + 1, y + hh, 'o');
+  };
+  const 반짝 = (x, y) => { put(x, y, 'y'); put(x - 1, y, 'y'); put(x + 1, y, 'y'); put(x, y - 1, 'y'); put(x, y + 1, 'y'); };
+  const 후광 = (cx, cy, r) => {
+    for (let y = cy - r - 1; y <= cy + r + 1; y++) for (let x = cx - r - 1; x <= cx + r + 1; x++) {
+      const d = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+      if (d <= r) put(x, y, 'S'); else if (f % 2 && d <= r + 1) put(x, y, 'y');   // 테두리가 맥박처럼
+    }
+  };
+  const 땀 = (x, y) => { put(x, y + (f % 2), 'C'); put(x, y + 1 + (f % 2), 'C'); };
+  const 하트 = (x, y) => stamp(['R.R', 'RRR', '.R.'], x, y);
+  const 상자 = (x, y) => { fill(x, y, 9, 6, 'o'); fill(x + 1, y + 1, 7, 4, 'd'); fill(x + 4, y + 1, 1, 4, 'e'); };
+  const 가방 = (x, y) => stamp(['.oo.', 'oddo', 'oddo', '.oo.'], x, y);
+  const 폰 = (x, y) => { fill(x, y, 4, 6, 'o'); fill(x + 1, y + 1, 2, 4, 'l'); };
+  // 책상 — 상판 y=32. 앉은 사람은 y=21 에 두면 가슴 아래가 가려진다
+  const 책상 = (x, w) => {
+    fill(x, 32, w, 1, 'o'); fill(x, 33, w, 2, 'd'); fill(x, 35, w, 1, 'e'); fill(x, 36, w, 1, 'o');
+    fill(x + 1, 37, 2, 5, 'o'); fill(x + w - 3, 37, 2, 5, 'o');
+  };
+  const 사무실 = () => { 실내('b', 'c', 'f', 'g'); 창문(46, 3, 15, 12, 'D', () => fill(49, 6, 5, 2, 'P')); };
+  const 낮방 = () => { 실내('H', 'I', 'W', 'X'); 창문(44, 4, 16, 12, 'D', () => fill(47, 7, 5, 2, 'P')); };
+  const 밤하늘 = () => { stamp(['.yy', 'yy.', 'yy.', '.yy'], 49, 5); put(57, 5, 'P'); put(56, 11, f % 2 ? 'P' : 'N'); };
+
+  switch (b) {
+    case '인트로1': {   // 고된 취준 끝에… — 새벽 2시, 책상에서 운다
+      실내('V', 'O', 'W', 'X');
+      창문(46, 3, 15, 12, 'N', 밤하늘);
+      fill(2, 2, 21, 9, 'o'); fill(3, 3, 19, 7, 'K'); text('02:00', 4, 4, 'R');
+      fill(27, 3, 14, 11, 'o'); fill(28, 4, 12, 9, 'P');                    // 화이팅 포스터
+      fill(29, 5, 3, 2, 'Y'); fill(33, 5, 5, 1, 'R'); fill(30, 8, 8, 1, 'L'); fill(30, 10, 6, 1, 'L');
+      stamp(['.oooo.', 'oYYYYo', 'oooooo'], 2, 20); fill(4, 23, 1, 6, 'o');  // 스탠드
+      ['B', 'R', 'a', 'Y', 'l', 'R', 'B'].forEach((c, i) => {             // 쌓인 문제집
+        const y = 27 - i * 2, x = 45 + (i % 2);
+        fill(x, y, 13, 2, 'o'); fill(x + 1, y, 11, 1, c);
+      });
+      사람(16, 17, { pose: 'sit', face: 'sad' });
+      put(22, 25 + (f % 2), 'C'); put(25, 25 + ((f + 1) % 2), 'C');
+      fill(0, 29, 64, 1, 'o'); fill(0, 30, 64, 2, 'd'); fill(0, 32, 64, 1, 'e'); fill(0, 33, 64, 1, 'o');
+      fill(3, 34, 58, 8, 'e'); fill(2, 34, 1, 8, 'o'); fill(61, 34, 1, 8, 'o'); fill(2, 42, 60, 1, 'o');
+      fill(31, 27, 13, 2, 'o'); fill(32, 27, 5, 1, 'P'); fill(38, 27, 5, 1, 'P');   // 펼친 문제집 (몸을 가리지 않게 옆에)
+      break;
+    }
+    case '인트로2': {   // 취직에 성공한 OO씨! — 합격 문자
+      낮방();
+      사람(24, 25, { face: f < 2 ? 'shock' : 'happy' });
+      폰(37, 29);
+      if (f % 2 === 0) { put(42, 29, 'o'); put(43, 31, 'o'); put(42, 33, 'o'); }   // 띠링
+      말풍선(36, 12, '!?');
+      [[12, 14], [54, 22], [16, 30], [52, 36], [30, 8]].forEach(([x, y], i) => { if ((i + f) % 2) 반짝(x, y); });
+      break;
+    }
+    case '인트로3': {   // 과연 OO씨의 운명은? — 첫 출근, 동기들 사이
+      사무실();
+      사람(0, 25, { man: 1, colors: NPC.동료 });
+      사람(13, 23, { man: 1, colors: NPC.신입2, face: 'happy' });
+      사람(26, 26, { man: 1, colors: NPC.신입3 });
+      사람(44, 25, {});
+      땀(59, 30);
+      가방(56, 36);
+      fill(44, 31 + (f % 2), 1, 2, 's'); put(43, 31 + (f % 2), 'o');      // 쭈뼛쭈뼛 손 인사
+      말풍선(48, 10, '?');
+      break;
+    }
+    case '엔딩:end01': {   // 하극상 — 사장 자리에서 나와!
+      사무실();
+      사람(6, 21, { man: 1, colors: NPC.사장, mustache: 1, face: 'shock', pose: 'sit' });
+      책상(2, 24);
+      fill(8, 30, 9, 2, 'o'); fill(9, 30, 7, 1, 'y');                       // 명패
+      사람(36, 25, { face: 'angry' });
+      const sx = 50 + (f % 2);                                              // 참교육 피켓을 흔든다
+      fill(sx + 5, 16, 1, 18, 'e'); fill(sx, 7, 12, 10, 'o'); fill(sx + 1, 8, 10, 8, 'P');
+      fill(sx + 2, 9, 8, 1, 'R'); fill(sx + 2, 11, 6, 1, 'R'); fill(sx + 2, 13, 8, 1, 'R');
+      말풍선(2, 6, '!?'); 말풍선(30, 12, '!');
+      break;
+    }
+    case '엔딩:end02': {   // 연금이나타자 — 팀장님!!
+      사무실();
+      [[3, 33], [12, 34], [21, 33]].forEach(([x, y], i) => {
+        꼬마(x, y, NPC.동료);
+        const up = (f + i) % 2;
+        put(x - 1, y + 4 - up * 2, 's'); put(x + 7, y + 4 - up * 2, 's');
+      });
+      사람(34, 25, { face: 'smug' });
+      fill(48, 35, 4, 1, 's');
+      말풍선(44, 11, '…'); 말풍선(4, 22, '!');
+      break;
+    }
+    case '엔딩:end03': {   // 직장인 왜하는데ㅋㅋ — 돈더미 위
+      fill(0, 0, 64, 48, 'D');
+      for (let y = 30; y < 48; y++) for (let x = 0; x < 64; x++) {
+        const dx = (x - 32) / 36, dy = (y - 52) / 22;
+        if (dx * dx + dy * dy > 1) continue;
+        put(x, y, (x * 3 + y * 5) % 7 === 0 ? 'o' : (x + y * 2) % 9 === 0 ? 'y' : 'Y');
+      }
+      for (let i = 0; i < 6; i++) {                                         // 지폐가 쏟아진다
+        const bx = 3 + i * 10 + (i % 2) * 3, by = (f * 4 + i * 9) % 28;
+        fill(bx, by, 5, 3, 'a'); put(bx + 2, by + 1, 'i');
+      }
+      사람(24, 15, { face: 'happy' });
+      말풍선(42, 6, '♥');
+      break;
+    }
+    case '엔딩:end04': {   // 이제 이게 본업인데요? — 방송 중
+      낮방();
+      for (let y = 9; y < 26; y++) for (let x = 5; x < 22; x++) {           // 링라이트
+        const d = Math.sqrt((x - 13) * (x - 13) + (y - 17) * (y - 17));
+        if (d >= 5.5 && d <= 7) put(x, y, 'y');
+      }
+      for (let t = 0; t < 14; t++) { put(13 - Math.floor(t / 3), 27 + t, 'o'); put(13 + Math.floor(t / 3), 27 + t, 'o'); put(13, 27 + t, 'o'); }
+      fill(8, 21, 11, 7, 'o'); fill(9, 22, 9, 5, 'K'); fill(18, 22, 3, 5, 'o'); fill(19, 23, 1, 3, 'l');
+      put(10, 23, f % 2 ? 'R' : 'K');                                       // REC
+      사람(36, 25, { face: 'happy' });
+      fill(50, 28, 1, 4, 's'); put(49, 27, 's'); put(51, 27, 's');          // 브이
+      하트(56, 20 - f * 3); 하트(30, 22 - ((f + 2) % 4) * 3);
+      break;
+    }
+    case '엔딩:end05': {   // 제가 좀 잘 만들어요 — 재고 산더미
+      낮방();
+      [[36, 35], [45, 35], [54, 35], [40, 29], [49, 29], [44, 23], [53, 23], [48, 17]].forEach(([x, y]) => 상자(x, y));
+      책상(0, 34);
+      fill(4, 21, 13, 11, 'o'); fill(5, 22, 11, 9, 't'); fill(6, 23, 9, 7, 'l');
+      fill(7, 24, 5, 1, 'w'); if (f >= 1) fill(9, 26, 5, 1, 'P'); if (f >= 2) fill(7, 28, 6, 1, 'w');   // 주문 채팅
+      사람(18, 21, { pose: 'sit' });
+      말풍선(4, 6, '?');
+      break;
+    }
+    case '엔딩:end06': {   // 저도 이제 대표입니다 — 일 배달이요!
+      사무실();
+      사람(4, 21, { pose: 'sit', face: 'shock' }); 땀(19, 26);
+      책상(0, 24);
+      fill(6, 30, 10, 2, 'o'); fill(7, 30, 8, 1, 'y');
+      for (let i = 0; i < 6; i++) fill(17, 31 - i, 6, 1, i % 2 ? 'L' : 'P');
+      [[28, 25], [44, 25]].forEach(([x, y]) => { 사람(x, y, { man: 1, colors: NPC.동료, pose: 'walk', face: 'happy' }); 상자(x + 3, y + 9); });
+      말풍선(36, 12, '!'); 말풍선(52, 12, '!');
+      break;
+    }
+    case '엔딩:end07': {   // 회사는 헬스장 가는 길에 — 덤벨 컬
+      사무실();
+      사람(4, 25, { man: 1, colors: NPC.동료, face: 'shock' }); 땀(19, 30);
+      사람(30, 25, { muscle: 1, face: 'angry' });
+      const dy = f % 2 ? 0 : 4;
+      fill(44, 27 + dy, 1, 4, 'K'); fill(49, 27 + dy, 1, 4, 'K'); fill(44, 28 + dy, 6, 2, 't');
+      fill(22, 36, 9, 5, 'o'); fill(23, 37, 7, 3, 'B'); fill(25, 35, 3, 1, 'o');   // 운동 가방
+      말풍선(2, 12, '…');
+      break;
+    }
+    case '엔딩:end08': {   // 이 또한 지나가리라 — 해탈
+      fill(0, 0, 64, 34, 'c'); fill(0, 34, 64, 14, 'm');
+      fill(2, 0, 4, 34, 'e'); fill(58, 0, 4, 34, 'e');
+      후광(32, 21, 12);
+      사람(24, 16, { bun: 1, face: 'zen', pose: 'lotus' });
+      [[2, 38, '동료'], [11, 40, '신입2'], [20, 39, '사장'], [37, 39, '동료'], [46, 40, '신입3'], [55, 38, '집주인']]
+        .forEach(([x, y, c], i) => 꼬마(x, y + ((f + i) % 2), NPC[c]));
+      break;
+    }
+    case '엔딩:end09': {   // 꼰대임원 — 주말에 등산가자
+      fill(0, 0, 64, 30, 'D');
+      for (let x = 0; x < 64; x++) {
+        const t = Math.max(16 - Math.abs(x - 14), 20 - Math.abs(x - 46) * 1.2);
+        for (let y = 30 - Math.floor(t); y < 30; y++) put(x, y, t > 12 && y < 33 - t ? 'P' : 'i');
+      }
+      fill(0, 30, 64, 18, 'a');
+      사람(6, 25, { muscle: 1, face: 'happy' });
+      fill(22, 8, 1, 26, 'e'); fill(23, 8, 11, 7, 'R'); fill(24, 11, 8, 1, 'y');
+      if (f % 2) { fill(33, 8, 1, 2, 'D'); put(33, 14, 'D'); }              // 깃발이 펄럭
+      사람(34, 26, { man: 1, colors: NPC.동료, face: 'sad' });
+      사람(48, 25, { man: 1, colors: NPC.신입2, face: 'sad' });
+      말풍선(4, 12, '!');
+      break;
+    }
+    case '엔딩:end10': {   // 헬스장사장님 — 아홉, 아홉, 아홉
+      실내('T', 'L', 'K', 't');
+      fill(30, 4, 28, 18, 'o'); fill(31, 5, 26, 16, 'l'); for (let i = 0; i < 6; i++) put(35 + i, 15 - i, 'P');
+      사람(6, 25, { man: 1, colors: NPC.신입2, face: 'sad', pale: 1 }); 땀(21, 30);
+      const by = 22 + (f % 2) * 3;                                          // 바벨이 오르내린다
+      fill(0, by, 28, 1, 't'); fill(1, by - 2, 2, 5, 'K'); fill(25, by - 2, 2, 5, 'K');
+      put(7, by + 1, 's'); put(20, by + 1, 's');
+      사람(40, 25, { muscle: 1, face: 'angry' });
+      말풍선(50, 10, '9');
+      break;
+    }
+    case '엔딩:end11': {   // 치킨집사장님 — 닭가슴살 치킨
+      실내('b', 'c', 'f', 'g');
+      fill(0, 2, 64, 11, 'o'); fill(1, 3, 62, 9, 'R');
+      [3, 53].forEach(x => stamp(['..YYY.', '.YYYYY', '.YYYYY', 'PYYY..', 'P.....'], x, 5));   // 닭다리 간판
+      fill(14, 5, 34, 2, 'P'); fill(18, 9, 26, 1, 'P');
+      사람(10, 25, { muscle: 1 });
+      fill(25, 27, 6, 8, 'o'); fill(26, 28, 4, 6, 'P'); fill(27, 29, 2, 1, 'L'); fill(27, 31, 2, 1, 'L');   // 메뉴판
+      사람(44, 25, { man: 1, colors: NPC.손님, face: 'shock' });
+      말풍선(54, 14, '?');
+      break;
+    }
+    case '엔딩:end12': {   // 헬창조직보스 — 충성
+      fill(0, 0, 64, 36, 'N'); put(5, 4, 'P'); put(34, 3, 'P');
+      [[0, 9, 16], [10, 8, 10], [19, 10, 18], [30, 8, 12], [39, 12, 6], [52, 12, 14]].forEach(([x, w, top]) => {
+        fill(x, top, w, 36 - top, 'M');
+        for (let yy = top + 2; yy < 34; yy += 4) for (let xx = x + 2; xx < x + w - 1; xx += 3) if ((xx * 7 + yy * 3) % 5 < 1) fill(xx, yy, 1, 2, 'y');
+      });
+      fill(0, 36, 64, 12, 'G');
+      fill(37, 27, 26, 9, 'o'); fill(38, 28, 24, 7, 'K'); fill(42, 21, 15, 7, 'o'); fill(43, 22, 13, 6, 'K');
+      fill(44, 23, 5, 4, 't'); fill(50, 23, 5, 4, 't'); fill(61, 29, 2, 2, 'y');
+      stamp(['.ooo.', 'ottto', 'ottto', '.ooo.'], 40, 33); stamp(['.ooo.', 'ottto', 'ottto', '.ooo.'], 54, 33);
+      사람(2, 25, { muscle: 1, face: 'shades' });
+      stamp(['.oo.', 'oddo', 'oyyo', 'oddo', '.oo.'], 17, 33);               // 돈가방
+      [[21, 26], [29, 26]].forEach(([x, y], i) => 사람(x, y + ((f + i) % 2), { man: 1, colors: NPC.조직, face: 'shades' }));
+      break;
+    }
+    case '엔딩:end13': {   // 출근이 곧 수행 — 일은 나쁜거에요
+      사무실();
+      후광(14, 30, 11);
+      사람(6, 25, { bun: 1, face: 'zen' });
+      사람(40, 25, { man: 1, colors: NPC.사장, mustache: 1, face: 'angry' });
+      fill(38, 35, 4, 1, 's');
+      말풍선(52, 10, '!'); 말풍선(20, 14, '…');
+      break;
+    }
+    case '엔딩:end14': {   // 구독자가 곧 신도 — 좋댓구알
+      낮방();
+      fill(13, 27, 1, 13, 'o'); fill(9, 40, 9, 1, 'o');
+      fill(2, 10, 24, 17, 'o'); fill(3, 11, 22, 15, 'K'); fill(4, 12, 20, 13, 'l');
+      stamp(DOT_MINI, 10, 15, { w: 'P' }); put(5, 13, f % 2 ? 'R' : 'l');
+      후광(44, 23, 11);
+      사람(36, 18, { bun: 1, face: 'zen', pose: 'lotus' });
+      하트(27, 14 - f * 3); 하트(30, 20 - ((f + 2) % 4) * 3);
+      break;
+    }
+    case '엔딩:end15': {   // 가진 게 없으니 잃을 것도 없다 — 월세는 나쁜거에요
+      실내('H', 'I', 'W', 'X');
+      put(20, 6, 'O'); put(21, 7, 'O'); put(21, 8, 'O'); put(22, 9, 'O'); put(21, 10, 'O');   // 벽 금
+      후광(42, 23, 11);
+      사람(34, 18, { bun: 1, face: 'zen', pose: 'lotus' });
+      사람(4, 25, { man: 1, colors: NPC.집주인 });
+      말풍선(16, 12, '?');
+      break;
+    }
+    case '엔딩:end16': {   // 이거 드시고 구원받으세요 — 어두운 골목
+      fill(0, 0, 64, 48, 'M'); fill(0, 38, 64, 10, 'G');
+      for (let t = 0; t < 26; t++) { put(t, 12 + t, 'O'); put(63 - t, 12 + t, 'O'); put(t, 4 + t, 'O'); put(63 - t, 4 + t, 'O'); }
+      후광(42, 30, 8);
+      사람(34, 25, { bun: 1, face: 'zen' });
+      가방(48, 33); put(49, 32, 'y');
+      사람(6, 25, { man: 1, colors: NPC.손님, face: 'shock' }); 땀(21, 30);
+      말풍선(44, 10, '…');
+      break;
+    }
+    case '엔딩:end17': {   // 건물주 — 사장님 월세 천만원!!
+      사무실();
+      사람(6, 25, { face: 'happy' });
+      stamp(['.yy.', 'y..y', '.yy.'], 17, 33); fill(20, 34, 5, 1, 'y'); put(24, 35, 'y'); put(22, 35, 'y');   // 열쇠
+      [[4, 22], [22, 26], [3, 34]].forEach(([x, y], i) => { if ((i + f) % 2) 반짝(x, y); });
+      사람(40, 25, { man: 1, colors: NPC.사장, mustache: 1, face: 'shock' }); 땀(55, 30);
+      말풍선(18, 12, '!');
+      break;
+    }
+    case '엔딩:end18': {   // 퇴사 — 사직서 들고 나온다
+      fill(0, 0, 64, 42, 'D'); fill(0, 42, 64, 6, 'J'); for (let x = 5; x < 64; x += 9) fill(x, 42, 1, 6, 'L');
+      fill(40, 8, 8, 2, 'P'); fill(38, 9, 12, 2, 'P');
+      fill(2, 4, 26, 38, 'o'); fill(3, 5, 24, 36, 'T'); fill(3, 5, 24, 1, 'A');
+      fill(8, 8, 14, 6, 'o'); fill(9, 9, 12, 4, 'R'); fill(11, 10, 3, 2, 'P'); fill(16, 10, 3, 2, 'P');   // 회사 간판
+      [[6, 17], [14, 17], [21, 17], [6, 23], [21, 23]].forEach(([x, y]) => { fill(x, y, 4, 4, 'o'); fill(x + 1, y + 1, 2, 2, 'l'); });
+      fill(10, 29, 11, 13, 'o'); fill(11, 30, 4, 12, 'l'); fill(16, 30, 4, 12, 'l');
+      사람(38, 26, { pose: 'walk' });
+      fill(51, 33, 7, 5, 'o'); fill(52, 34, 5, 3, 'P'); fill(53, 35, 3, 1, 'R');   // 사직서
+      break;
+    }
+    case '엔딩:end19': {   // 아사 — 밥좀...
+      사무실();
+      사람(4, 25, { man: 1, colors: NPC.동료, face: 'shock' });
+      말풍선(14, 10, '!');
+      사람(36, 25, { face: 'weak', pale: 1 }); 땀(51, 30);
+      if (f % 2) { put(35, 36, 'o'); put(34, 37, 'o'); put(52, 36, 'o'); put(53, 37, 'o'); }   // 꼬르륵
+      stamp(['.oooooo.', 'oAAAAAAo', '.oAAAAo.'], 24, 39);                   // 빈 그릇
+      말풍선(48, 12, '…');
+      break;
+    }
+    case '엔딩:end20': {   // 백수 — 나가!
+      fill(0, 0, 64, 42, 'H'); for (let y = 3; y < 42; y += 4) fill(0, y, 64, 1, 'I');
+      fill(0, 42, 64, 6, 'J');
+      fill(2, 8, 20, 34, 'o'); fill(3, 9, 18, 33, 'K'); fill(22, 9, 3, 33, 'e');
+      사람(4, 25, { man: 1, colors: NPC.집주인, face: 'angry' });
+      가방(22 + f * 5, [22, 18, 20, 26][f]);                                  // 짐이 날아간다
+      사람(44, 26, { face: 'sad' });
+      put(50, 34 + (f % 2), 'C'); put(53, 34 + ((f + 1) % 2), 'C');
+      말풍선(14, 4, '!');
+      break;
+    }
+    case '엔딩:end21': {   // 짤림 — 퇴직금은 못줘
+      사무실();
+      사람(6, 25, { man: 1, colors: NPC.사장, mustache: 1, face: 'angry' });
+      말풍선(18, 8, 'X');
+      사람(38, 25, { face: 'angry' });
+      폰(51, 29); if (f % 2) put(52, 31, 'R');
+      말풍선(48, 12, '!');
+      break;
+    }
+  }
+}
+
+// 인트로 — 손그림 3장의 제목·대사. IMG.intro 와 장수가 같아야 한다
+const INTRO_DOT = [
+  { key: '인트로1', t: '고된 취준 끝에…', say: 'ㅠㅠ' },
+  { key: '인트로2', t: '취직에 성공한 OO씨!', say: '띠링!  "드디어..?!"' },
+  { key: '인트로3', t: '과연 OO씨의 운명은?', say: '"안녕하세...요?"' },
+];
 
 const 장면캐시 = {};
 function 장면URL(b, mood, pile, f) {
@@ -1380,7 +1823,7 @@ const 장면가능 = () => {
 // 컨디션 = 멘탈·건강 중 더 나쁜 쪽의 위험 단계. 서류 더미 = 밀린 업무 20 마다 한 단
 // 타이틀은 게임 상태(S)가 없을 때도 그리므로 늘 보통
 function 장면상태(b) {
-  if (b === '타이틀' || !S) return { mood: 0, pile: 0 };
+  if (b === '타이틀' || !S || /^(인트로|엔딩:)/.test(b)) return { mood: 0, pile: 0 };
   const lv = Math.max(위험단계('멘탈'), 위험단계('건강'));
   return { mood: lv >= 3 ? 2 : lv >= 1 ? 1 : 0, pile: Math.min(4, Math.floor(Math.max(0, S.work) / 20)) };
 }
@@ -2371,7 +2814,11 @@ const 직급Of = st => CFG.직급[CFG.승진일.filter(d => st.day > d).length -
 function renderIntro() {
   const list = IMG.intro, last = INTRO >= list.length - 1;
   let h = '<div id="intro">';
-  h += '<img class="introimg" src="' + esc(list[INTRO]) + '" alt="" onerror="this.remove()">';
+  const dot = INTRO_DOT[INTRO] && 도트태그(INTRO_DOT[INTRO].key, 'introimg');
+  if (dot) {
+    h += '<div class="introcap">' + esc(INTRO_DOT[INTRO].t) + '</div>' + dot
+       + '<div class="endsay">' + esc(INTRO_DOT[INTRO].say) + '</div>';
+  } else h += '<img class="introimg" src="' + esc(list[INTRO]) + '" alt="" onerror="this.remove()">';
   h += '<div class="dots">' + list.map((_, i) => i === INTRO ? '●' : '○').join('') + '</div>';
   h += '<button data-intro="' + (last ? 'start' : 'next') + '">' + (last ? '시작' : '다음') + '</button>';
   h += '</div>';
@@ -2463,8 +2910,7 @@ const dexCell = (name, got) =>
 function openDexPop(name, got) {
   const info = ENDINFO[name];
   let h = '<h2>' + (got ? esc(name) : '???') + '</h2>';
-  const src = got ? endSrc(name) : '';
-  if (src) h += '<img class="popimg" src="' + src + '" alt="" onerror="this.remove()">';
+  if (got) h += 엔딩그림(name, 'popimg');
   if (got) {
     const v = 유형풀이(((S && S.dex) || (loadRaw() || { dex: {} }).dex || {})[name]);
     h += '<div class="typebox">';
@@ -2618,11 +3064,14 @@ function 카드그리기(mode, cb) {
   }
   const im = new Image();
   im.onload = () => {
-    const box = 520, x = (CARD - box) / 2, y = 165;
+    // 도트(4:3)는 가로를 맞추고 세로 가운데에, 보간 없이 키운다
+    const 도트 = src.indexOf('data:') === 0;
+    const box = 520, bh = 도트 ? 390 : box, x = (CARD - box) / 2, y = 165 + (box - bh) / 2;
     c.save();
+    c.imageSmoothingEnabled = !도트;
     c.strokeStyle = '#000'; c.lineWidth = 4;
-    c.drawImage(im, x, y, box, box);
-    c.strokeRect(x, y, box, box);
+    c.drawImage(im, x, y, box, bh);
+    c.strokeRect(x, y, box, bh);
     c.restore();
     마무리();
   };
