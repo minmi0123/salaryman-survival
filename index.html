@@ -1212,20 +1212,52 @@ const 장면종류 = {
 // 벽시계 글자. 블록은 BLK 의 시각, 타이틀은 08:59 → 09:00 으로 넘어간다
 const 시계글 = (b, f) => b === '타이틀' ? (f < 2 ? '08:59' : '09:00') : b === '취침' ? '00:00' : BLK[b].t;
 
+/* 갈래 차림 — 플레이 중 주인공이 어느 엔딩 쪽으로 가는지 그림에 드러난다.
+   두 겹이다. 몸·머리 = 자기관리(운동 → 근육 팔, 기도 → 상투), 옷·소품 = 나머지 6갈래.
+   몸은 줄을 통째로 바꾸고(BUN_TOP · MUSCLE_ARMS), 옷은 그 위에 글자만 고친다 — 그래서 겹쳐도 안 부딪힌다.
+   좌표는 HERO_BODY 기준이고 MUSCLE_ARMS 도 넥타이(r)·버클(y) 자리가 같다. */
+const 차림 = {
+  // 짙은 정장 — 셔츠·넥타이(가운데 6~9열)만 남기고 상의를 덮는다
+  사장님: (rows, set, 몸통) => 몸통((ch, x) => ch === 'w' && (x < 6 || x > 9) ? 't' : ch),
+  // 목에 건 사원증 — 파란 줄 + 하늘색 카드
+  팀장님: (rows, set) => { set(9, 6, 'B'); set(9, 9, 'B'); set(10, 7, 'B'); set(10, 8, 'B'); set(11, 7, 'l'); set(11, 8, 'l'); },
+  // 회색 츄리닝 — 흰 지퍼선, 치마·다리까지 바지로
+  돈많은백수: (rows, set, 몸통) => 몸통((ch, x, y) => ch === 'r' ? 'w' : (ch === 'w' || ch === 'y' || ch === 'n') ? 'T' : (y === 13 && ch === 's') ? 'T' : ch),
+  // 빨간 헤드셋 — 머리띠 + 귀 + 마이크
+  크리에이터: (rows, set) => {
+    [...rows[1]].forEach((ch, x) => { if (ch === 'o') set(1, x, 'R'); });
+    set(5, 3, 'R'); set(6, 3, 'R'); set(5, 12, 'R'); set(6, 12, 'R'); set(8, 4, 'R');
+  },
+  // 검은 후드티 — 흰 끈 두 줄
+  검은손: (rows, set, 몸통) => {
+    몸통((ch, x, y) => (ch === 'w' || ch === 'y' || ch === 'r') && y <= 11 ? 'K' : ch);
+    set(10, 6, 'A'); set(11, 6, 'A'); set(10, 9, 'A'); set(11, 9, 'A');
+  },
+  // 선글라스
+  사업가: (rows, set) => { for (let x = 4; x <= 11; x++) set(6, x, x === 7 || x === 8 ? 'o' : 'K'); },
+};
+
 /* 주인공 줄. pose: stand(서 있음) · walk(걷기) · sit(다리 없음 — 책상·식탁·소파가 아래를 가린다)
-   f: 0~3 애니메이션 프레임. 3 에서 눈을 깜빡인다. mood: 0 보통 · 1 지침 · 2 한계 */
-function 주인공줄(pose, f, mood, closed) {
+   f: 0~3 애니메이션 프레임. 3 에서 눈을 깜빡인다. mood: 0 보통 · 1 지침 · 2 한계
+   look: '메인갈래|자기관리갈래' (갈래차림()). 빈 칸이면 기본 차림 */
+function 주인공줄(pose, f, mood, closed, look) {
+  const [main, sub] = (look || '|').split('|');
   let rows = HERO_BODY.slice();
+  if (sub === '기도') rows = BUN_TOP.concat(rows.slice(7));
+  if (sub === '운동') rows = rows.slice(0, 9).concat(MUSCLE_ARMS, rows.slice(12));
   if (pose === 'stand') rows = rows.concat(HERO_LEGS_A);
   if (pose === 'walk') rows = rows.concat(f % 2 ? HERO_LEGS_B : HERO_LEGS_A);
   const set = (y, x, ch) => { rows[y] = rows[y].slice(0, x) + ch + rows[y].slice(x + 1); };
   if (mood >= 1) { set(7, 6, 'q'); set(7, 9, 'q'); }          // 다크서클
   if (mood >= 2) { set(8, 7, 'o'); set(8, 8, 'o'); }          // 입이 벌어진다
   if (closed || (f === 3 && mood < 2)) { set(6, 6, 's'); set(6, 9, 's'); }   // 눈 감음
+  // 옷은 마지막에 — 선글라스가 눈 감기에 지워지지 않게
+  const 몸통 = fn => { for (let y = 9; y < rows.length; y++) rows[y] = [...rows[y]].map((ch, x) => fn(ch, x, y)).join(''); };
+  if (차림[main]) 차림[main](rows, set, 몸통);
   return rows;
 }
 
-function 장면(b, mood, pile, f) {
+function 장면(b, mood, pile, f, look) {
   const g = Array.from({ length: SCN_H }, () => Array(SCN_W).fill('b'));
   const put = (x, y, ch) => { if (x >= 0 && x < SCN_W && y >= 0 && y < SCN_H) g[y][x] = ch; };
   const fill = (x0, y0, w, h, ch) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(x, y, ch); };
@@ -1251,7 +1283,7 @@ function 장면(b, mood, pile, f) {
     }
   };
   const 주인공 = (x, y, pose, closed) => {
-    stamp(주인공줄(pose, f, mood, closed), x, y, mood >= 2 ? { s: 'Z' } : null);
+    stamp(주인공줄(pose, f, mood, closed, look), x, y, mood >= 2 ? { s: 'Z' } : null);
     if (mood === 1) { put(x + 15, y + 5 + (f % 2), 'C'); put(x + 15, y + 6 + (f % 2), 'C'); }   // 식은땀 (양갈래 바깥)
     if (mood >= 2) {                                                                          // 먹구름 + 비
       stamp(DOT_CLOUD, x + 4, y - 6);
@@ -1796,13 +1828,13 @@ const INTRO_DOT = [
 ];
 
 const 장면캐시 = {};
-function 장면URL(b, mood, pile, f) {
-  const k = b + '|' + mood + '|' + pile + '|' + f;
+function 장면URL(b, mood, pile, f, look) {
+  const k = b + '|' + mood + '|' + pile + '|' + f + '|' + (look || '');
   if (!장면캐시[k]) {
     const cv = document.createElement('canvas');
     cv.width = SCN_W; cv.height = SCN_H;
     const c = cv.getContext('2d');
-    장면(b, mood, pile, f).forEach((row, y) => row.forEach((ch, x) => {
+    장면(b, mood, pile, f, look).forEach((row, y) => row.forEach((ch, x) => {
       c.fillStyle = DOT_PAL[ch] || '#000';
       c.fillRect(x, y, 1, 1);
     }));
@@ -1820,12 +1852,25 @@ const 장면가능 = () => {
   return 장면가능캐시;
 };
 
+/* 갈래 차림 판정. 메인 = 6갈래 중 갈래 구간 레벨 합이 가장 큰 쪽 (엔딩 노드·기본 구간은 안 센다).
+   1포인트부터 보인다. 동률이면 지금 입은 옷을 유지하고, 처음부터 동률이면 TREE 순서.
+   자기관리 = subBranch() 그대로 — 조합 엔딩 판정과 같은 규칙이라 그림과 엔딩이 어긋나지 않는다. */
+const 메인갈래목록 = TREE.filter(c => !c.구간.some(g => g.sub)).flatMap(c => c.구간.filter(g => g.tree));
+let 직전메인 = '';
+function 갈래차림() {
+  const sums = 메인갈래목록.map(g => g.nodes.reduce((a, n) => a + (n.end ? 0 : sk(n.id)), 0));
+  const max = Math.max(...sums);
+  const ties = max < 1 ? [] : 메인갈래목록.filter((g, i) => sums[i] === max).map(g => g.tree);
+  직전메인 = ties.includes(직전메인) ? 직전메인 : (ties[0] || '');
+  return 직전메인 + '|' + (subBranch() || '');
+}
+
 // 컨디션 = 멘탈·건강 중 더 나쁜 쪽의 위험 단계. 서류 더미 = 밀린 업무 20 마다 한 단
 // 타이틀은 게임 상태(S)가 없을 때도 그리므로 늘 보통
 function 장면상태(b) {
-  if (b === '타이틀' || !S || /^(인트로|엔딩:)/.test(b)) return { mood: 0, pile: 0 };
+  if (b === '타이틀' || !S || /^(인트로|엔딩:)/.test(b)) return { mood: 0, pile: 0, look: '' };
   const lv = Math.max(위험단계('멘탈'), 위험단계('건강'));
-  return { mood: lv >= 3 ? 2 : lv >= 1 ? 1 : 0, pile: Math.min(4, Math.floor(Math.max(0, S.work) / 20)) };
+  return { mood: lv >= 3 ? 2 : lv >= 1 ? 1 : 0, pile: Math.min(4, Math.floor(Math.max(0, S.work) / 20)), look: 갈래차림() };
 }
 
 /* 0.45초마다 프레임을 넘긴다. 타이머는 한 번만 만들고, 화면에 있는 도트 그림(img[data-dot])만 갈아 끼운다.
@@ -1840,7 +1885,7 @@ function 장면돌리기() {
     장면프레임 = (장면프레임 + 1) % 4;
     els.forEach(el => {
       const b = el.dataset.dot, st = 장면상태(b);
-      el.src = 장면URL(b, st.mood, st.pile, 장면프레임);
+      el.src = 장면URL(b, st.mood, st.pile, 장면프레임, st.look);
     });
   }, 450);
 }
@@ -1850,7 +1895,7 @@ function 도트태그(b, cls) {
   if (!장면가능()) return '';
   장면돌리기();
   const st = 장면상태(b);
-  return '<img class="' + cls + ' dotimg" data-dot="' + b + '" src="' + 장면URL(b, st.mood, st.pile, 장면프레임) + '" alt="">';
+  return '<img class="' + cls + ' dotimg" data-dot="' + b + '" src="' + 장면URL(b, st.mood, st.pile, 장면프레임, st.look) + '" alt="">';
 }
 
 const sceneTag = () => {
