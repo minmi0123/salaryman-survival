@@ -2,7 +2,7 @@
 
 > 환생 반복형 직장인 시뮬레이션 클리커. **1회차는 무조건 못 깬다.**
 
-**▶ [플레이하기](https://minmi0123.github.io/salaryman-survival/)**
+**▶ [플레이하기](https://minlabnote.com/salaryman-survival/)**
 
 단일 HTML 파일 하나. 설치도 빌드도 서버도 필요 없습니다. 파일을 브라우저로 열면 바로 시작됩니다.
 
