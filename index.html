@@ -67,6 +67,7 @@ body{background:var(--bg);color:var(--text);
 }
 #bar .row1{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:6px}
 #bar .row1 span:last-child{color:var(--accent)}
+#bar .row1 .sndbtn{font-weight:normal;padding:0 6px;line-height:1.4}
 .g{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
 .g .nm{width:34px;flex:none}
 .g .track{flex:1;height:12px;border:2px solid var(--line);position:relative;background:var(--sink)}
@@ -812,7 +813,7 @@ const setSleepScreen = on => { try { localStorage.setItem(OPTKEY, on ? '1' : '0'
             브라우저는 사용자가 한 번 누르기 전에는 소리를 못 틀게 막는다. 그래서 첫 클릭에서 시작한다.
    효과음:   파일 없이 Web Audio 로 합성한 짧은 '톡'. 에셋 0.
    설정 키는 게임 저장과 분리 — 취침 화면 토글과 같은 방식. 기본값은 둘 다 켜짐. */
-const SND = { bgm: 'snd/bgm.mp3', bgmVol: 0.35 };
+const SND = { bgm: 'snd/clock_in_again.ogg', bgmVol: 0.35 };
 const BGMKEY = 'salaryman_bgm', SFXKEY = 'salaryman_sfx';
 const bgmOn = () => { try { return localStorage.getItem(BGMKEY) !== '0'; } catch (e) { return true; } };
 const sfxOn = () => { try { return localStorage.getItem(SFXKEY) !== '0'; } catch (e) { return true; } };
@@ -832,24 +833,64 @@ function bgmPlay() {
 }
 function bgmPause() { if (BGM && !BGM.paused) BGM.pause(); }
 
+/* 상단바 소리 버튼 — 배경음악·효과음을 한 번에 켜고 끈다. 하나라도 켜져 있으면 '켜짐'.
+   따로 조절하는 건 설정 탭. */
+const soundOn = () => bgmOn() || sfxOn();
+const sndBtn = () => '<button data-opt="mute" class="mini sndbtn" aria-label="소리 '
+  + (soundOn() ? '끄기' : '켜기') + '">' + (soundOn() ? '🔊' : '🔇') + '</button>';
+
 let ACX = null;
-function 효과음() {
+// 효과음 공통 — 설정·브라우저 지원 확인 후 fn(컨텍스트, 현재시각) 을 부른다
+function 합성(fn) {
   if (!sfxOn()) return;
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   try {
     if (!ACX) ACX = new AC();
     if (ACX.state === 'suspended') ACX.resume();
-    const t = ACX.currentTime, o = ACX.createOscillator(), g = ACX.createGain();
-    o.type = 'triangle';
-    o.frequency.setValueAtTime(900, t);
-    o.frequency.exponentialRampToValueAtTime(420, t + 0.05);
-    g.gain.setValueAtTime(0.12, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
-    o.connect(g); g.connect(ACX.destination);
-    o.start(t); o.stop(t + 0.08);
+    fn(ACX, ACX.currentTime);
   } catch (e) {}
 }
+// 음 하나 — at 초 뒤에 f0 → f1 Hz 로 dur 초 동안, 음량 vol 에서 사라진다
+function 음(ac, at, type, f0, f1, dur, vol) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, at);
+  if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, at + dur * 0.7);
+  g.gain.setValueAtTime(vol, at);
+  g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(at); o.stop(at + dur + 0.01);
+}
+// 버튼 '톡'
+const 효과음 = () => 합성((ac, t) => 음(ac, t, 'triangle', 900, 420, 0.07, 0.12));
+
+/* 팝업 효과음 — openEvent 의 ev.sfx 로 고른다. 버튼 '톡' 과 겹치지 않게 살짝 늦게 시작.
+   good: 도-미-솔-도 올라가는 짧은 팡파레
+   bad:  솔 → 미♭ 으로 처지는 "띠로리"
+   warn: 작은 사이렌 위잉위잉 (멘탈·건강·업무 바닥 팝업) */
+const 팝업음 = {
+  good: (ac, t) => [523, 659, 784, 1047].forEach((f, i) =>
+          음(ac, t + 0.08 + i * 0.07, 'square', f, f, i === 3 ? 0.25 : 0.09, 0.05)),
+  bad:  (ac, t) => { 음(ac, t + 0.08, 'square', 392, 392, 0.18, 0.05);
+                     음(ac, t + 0.28, 'square', 311, 262, 0.4, 0.05); },
+  warn: (ac, t) => {
+    const o = ac.createOscillator(), g = ac.createGain(), s = t + 0.08, len = 0.9;
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(600, s);
+    for (let i = 0; i < 2; i++) {                 // 위잉 × 2
+      o.frequency.linearRampToValueAtTime(900, s + i * 0.45 + 0.22);
+      o.frequency.linearRampToValueAtTime(600, s + i * 0.45 + 0.45);
+    }
+    g.gain.setValueAtTime(0.0001, s);
+    g.gain.linearRampToValueAtTime(0.05, s + 0.05);
+    g.gain.setValueAtTime(0.05, s + len - 0.15);
+    g.gain.linearRampToValueAtTime(0.0001, s + len);
+    o.connect(g); g.connect(ac.destination);
+    o.start(s); o.stop(s + len + 0.01);
+  },
+};
+const 팝업효과음 = kind => { if (팝업음[kind]) 합성(팝업음[kind]); };
 
 (function initGA() {
   if (!GA_ID || isDev()) return;        // 개발자모드면 GA 스크립트 자체를 안 부름
@@ -2009,7 +2050,7 @@ function pick(c) {
   // 지각 판정
   if (c.late && Math.random() < CFG.지각확률 * (1 - M.지각방어()) * M.운보정()) {
     return openEvent({
-      title: '지각', desc: '너무 개운해져버렸다!! 어떡하지?',
+      title: '지각', sfx: 'bad', desc: '너무 개운해져버렸다!! 어떡하지?',
       opts: [
         { t: '시간멈추기 사용', need: () => S.items.시간멈추기 > 0,
           run: () => { S.items.시간멈추기--; log('시간멈추기 사용. 지각 방어.');
@@ -2027,7 +2068,7 @@ function pick(c) {
     addWarn(null);
     if (S.phase !== 'play') { render(); save(); return; }
     return openEvent({
-      title: '발각',
+      title: '발각', sfx: 'bad',
       desc: '"00씨 일 안하나!"' + SEP + SEP + '딴짓하다 걸렸습니다.' + SEP
           + '경고 +1  (' + S.warn + ' / ' + CFG.총경고임계 + ')',
       opts: [{ t: '...죄송합니다', run: function () {} }]
@@ -2106,7 +2147,7 @@ function checkGauges() {
   if (S.phase !== 'play') return;
   if (S.m <= 0) {
     return openEvent({
-      title: '멘탈 갈림', desc: '회사생활이 너무 고통스럽다..',
+      title: '멘탈 갈림', sfx: 'warn', desc: '회사생활이 너무 고통스럽다..',
       opts: [
         { t: '담배 피기', need: () => S.items.담배 > 0,
           run: () => { useItem('담배'); } },
@@ -2117,7 +2158,7 @@ function checkGauges() {
   }
   if (S.h <= 0) {
     return openEvent({
-      title: '건강 악화', desc: '갑자기 눈이 아프고 숨이 안쉬어진다...',
+      title: '건강 악화', sfx: 'warn', desc: '갑자기 눈이 아프고 숨이 안쉬어진다...',
       opts: [
         { t: '약 먹기', need: () => S.items.약 > 0,
           run: () => { useItem('약'); } },
@@ -2165,7 +2206,7 @@ function workEvent() {
     t: '그냥 집간다 · 경고 +1  「' + 경고대사.업무[Math.min(S.wk, 2)] + '」',
     run: () => { log('밤에 결국 노트북 켬. 업무 강제회복. 경고 +1.', 1);
                  addWarn('업무'); if (S.phase === 'play') pickDirect(CH.퇴근[0]); } });
-  openEvent({ title: '업무 밀림', desc: '해도해도 일이 줄어들지 않는다...', opts: opts });
+  openEvent({ title: '업무 밀림', sfx: 'warn', desc: '해도해도 일이 줄어들지 않는다...', opts: opts });
 }
 
 // 이벤트 안에서 퇴근 선택을 확정
@@ -2214,7 +2255,7 @@ function afterSleep() {
   if (rank() !== before) {
     log('승진. ' + 직급() + '. 배정량 증가. 월급은 그대로.', 1);
     return openEvent({
-      title: '승진',
+      title: '승진', sfx: 'good',
       desc: '오늘부터 ' + 직급() + '입니다.' + SEP + SEP
           + '"회사가 힘들어서 월급은 못올려줘...' + SEP + '이해해줘ㅎㅎ"' + SEP + SEP
           + '하루 업무 배정량이 늘어납니다.',
@@ -2281,6 +2322,7 @@ function 이벤트열기(e, 다음) {
   const list = e.opts || [{ t: '...그렇구나', m: e.m, h: e.h, work: e.work, money: e.money }];
   openEvent({
     title: e.t,
+    sfx: e.bad ? 'bad' : 'good',
     evid: e.id,        // roach·sun 처럼 제목이 같은 짝이 있어 제목으로는 구분이 안 된다
     img: IMG.evDir ? IMG.evDir + e.id + '.png' : '',
     desc: e.d,
@@ -2346,7 +2388,7 @@ function settle() {
     lines.push('월세        -' + won(rent));
     lines.push('');
     lines.push('잔액        ' + won(S.money));
-    openEvent({ title: '월급날', desc: lines.join(SEP),
+    openEvent({ title: '월급날', sfx: 'good', desc: lines.join(SEP),
                 opts: [{ t: '확인', run: function () {} }] });
     return;
   } else {
@@ -2363,7 +2405,7 @@ function settle() {
       }});
     opts.push({ t: '못 낸다 · 경고 +1  「' + 경고대사.돈[Math.min(S.wmoney, 1)] + '」',
       run: () => { log('월세 미납. 경고 +1.', 1); addWarn('돈'); } });
-    openEvent({ title: '월세 밀림', desc: '똑똑똑 월세내세용\n네 돈이없다구요??\n\n월세 ' + won(rent)
+    openEvent({ title: '월세 밀림', sfx: 'bad', desc: '똑똑똑 월세내세용\n네 돈이없다구요??\n\n월세 ' + won(rent)
                                           + ' / 소지금 ' + won(S.money), opts: opts });
   }
 }
@@ -2514,7 +2556,7 @@ function renderBar() {
   $('bar').classList[top >= 3 ? 'add' : 'remove']('risk3');   // toggle 은 sim.js 의 DOM 흉내에 없다
   $('bar').innerHTML =
     '<div class="row1"><span>D' + S.day + ' ' + 요일[S.dow] + '요일 · ' + 직급() + '</span>'
-    + '<span>' + won(S.money) + '</span></div>'
+    + '<span>' + won(S.money) + sndBtn() + '</span></div>'
     + gauge('멘탈', S.m, 100, S.m <= 25)
     + gauge('건강', S.h, 100, S.h <= 25)
     + gauge('업무', Math.min(S.work, 100), 100, S.work > 80, over)
@@ -2942,6 +2984,7 @@ const renderStatusLink = () => '';
 /* ── 이벤트 팝업 ── */
 function openEvent(ev) {
   S.phase = 'event'; S.ev = ev;
+  팝업효과음(ev.sfx);
   let h = '<h2>' + esc(ev.title) + '</h2>';
   // 이미지는 파일이 없으면 스스로 사라진다 — 그림 넣기 전에도 정상 동작
   if (ev.img && ev.img.indexOf('dot:') === 0) h += 도트태그(ev.img.slice(4), 'popimg');
@@ -3323,6 +3366,12 @@ document.addEventListener('click', e => {
   }
   if (t.dataset.opt === 'sleep') { setSleepScreen(!sleepScreenOn()); render(); return; }
   if (t.dataset.opt === 'bgm') { const on = !bgmOn(); setBgm(on); on ? bgmPlay() : bgmPause(); render(); return; }
+  if (t.dataset.opt === 'mute') {
+    const on = !soundOn(); setBgm(on); setSfx(on);
+    if (on) { bgmPlay(); 효과음(); } else bgmPause();
+    if (S && S.phase === 'event') renderBar(); else render();   // 팝업이 떠 있으면 바만 다시 그린다
+    return;
+  }
   if (t.dataset.opt === 'sfx') { const on = !sfxOn(); setSfx(on); if (on) 효과음(); render(); return; }
   if (t.dataset.ci !== undefined) { pick(choices()[+t.dataset.ci]); return; }
 
