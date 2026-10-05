@@ -219,6 +219,16 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 .slot button:disabled{opacity:.3;cursor:not-allowed}
 
 /* ── 스킬 ── */
+.vol{display:flex;align-items:center;gap:8px}
+.vol input{flex:1;min-width:0;accent-color:var(--accent);margin:0}
+.vol .vn{width:38px;text-align:right;font-variant-numeric:tabular-nums}
+.sktabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px}
+.sktabs button{border:2px solid var(--line);background:var(--panel);color:var(--text);font:inherit;font-size:12px;
+               padding:6px 2px;cursor:pointer;white-space:nowrap}
+.sktabs button.on{background:var(--accent);color:var(--ink);border-color:var(--accent);font-weight:bold}
+.sktabs .sp{display:inline-block;min-width:14px;margin-left:3px;padding:0 3px;font-size:10px;line-height:14px;
+            background:var(--accent);color:var(--ink)}
+.sktabs button.on .sp{background:var(--ink);color:var(--accent)}
 .tree{margin-bottom:16px}
 .tree .hd{font-weight:bold;border-bottom:2px solid var(--dim);padding-bottom:2px;margin-bottom:6px}
 .node{display:flex;align-items:flex-start;gap:8px;border:2px solid var(--line);background:var(--panel);padding:6px;margin-bottom:5px}
@@ -820,15 +830,47 @@ const sfxOn = () => { try { return localStorage.getItem(SFXKEY) !== '0'; } catch
 const setBgm = on => { try { localStorage.setItem(BGMKEY, on ? '1' : '0'); } catch (e) {} };
 const setSfx = on => { try { localStorage.setItem(SFXKEY, on ? '1' : '0'); } catch (e) {} };
 
-let BGM = null, BGM_BAD = false;
+/* 볼륨 — 설정 탭 슬라이더. 0~100, 기본 100. 배경음악은 100 이어도 SND.bgmVol 배로 낮춰 튼다.
+   iOS 사파리는 audio.volume 을 무시한다. 그래서 배경음악도 Web Audio 의 GainNode 를 거친다.
+   단 file:// 로 열면 크롬이 MediaElementSource 를 무음 처리하므로 그때만 audio.volume 을 쓴다. */
+const VOLKEY = { bgm: 'salaryman_bgmvol', sfx: 'salaryman_sfxvol' };
+const volGet = k => { try { const v = localStorage.getItem(VOLKEY[k]); return v === null ? 100 : Math.max(0, Math.min(100, +v || 0)); } catch (e) { return 100; } };
+const volSet = (k, v) => { try { localStorage.setItem(VOLKEY[k], String(v)); } catch (e) {} };
+
+let ACX = null;
+function 오디오() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (!ACX) {
+    ACX = new AC();
+    ACX.sfx = ACX.createGain();                 // 효과음 전체 볼륨
+    ACX.sfx.connect(ACX.destination);
+  }
+  if (ACX.state === 'suspended') ACX.resume();
+  return ACX;
+}
+
+let BGM = null, BGM_BAD = false, BGM_GAIN = null;
+function bgmVolApply() {
+  const v = SND.bgmVol * volGet('bgm') / 100;
+  if (BGM_GAIN) BGM_GAIN.gain.value = v; else if (BGM) BGM.volume = v;
+}
 function bgmPlay() {
   if (!bgmOn() || BGM_BAD || !SND.bgm || typeof Audio === 'undefined') return;
   if (!BGM) {
     BGM = new Audio();
-    BGM.preload = 'none'; BGM.loop = true; BGM.volume = SND.bgmVol;
+    BGM.preload = 'none'; BGM.loop = true;
     BGM.addEventListener('error', () => { BGM_BAD = true; if (SCREEN === 'game' && TAB === 'set') render(); });
     BGM.src = SND.bgm;
+    if (location.protocol !== 'file:') {
+      try {
+        const ac = 오디오();
+        if (ac) { BGM_GAIN = ac.createGain(); ac.createMediaElementSource(BGM).connect(BGM_GAIN); BGM_GAIN.connect(ac.destination); }
+      } catch (e) { BGM_GAIN = null; }
+    }
+    bgmVolApply();
   }
+  try { 오디오(); } catch (e) {}                 // 백그라운드에서 멈춘 컨텍스트를 다시 깨운다
   if (BGM.paused) { const p = BGM.play(); if (p && p.catch) p.catch(() => {}); }
 }
 function bgmPause() { if (BGM && !BGM.paused) BGM.pause(); }
@@ -839,16 +881,14 @@ const soundOn = () => bgmOn() || sfxOn();
 const sndBtn = () => '<button data-opt="mute" class="mini sndbtn" aria-label="소리 '
   + (soundOn() ? '끄기' : '켜기') + '">' + (soundOn() ? '🔊' : '🔇') + '</button>';
 
-let ACX = null;
 // 효과음 공통 — 설정·브라우저 지원 확인 후 fn(컨텍스트, 현재시각) 을 부른다
 function 합성(fn) {
   if (!sfxOn()) return;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return;
   try {
-    if (!ACX) ACX = new AC();
-    if (ACX.state === 'suspended') ACX.resume();
-    fn(ACX, ACX.currentTime);
+    const ac = 오디오();
+    if (!ac) return;
+    ac.sfx.gain.value = volGet('sfx') / 100;
+    fn(ac, ac.currentTime);
   } catch (e) {}
 }
 // 음 하나 — at 초 뒤에 f0 → f1 Hz 로 dur 초 동안, 음량 vol 에서 사라진다
@@ -859,7 +899,7 @@ function 음(ac, at, type, f0, f1, dur, vol) {
   if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, at + dur * 0.7);
   g.gain.setValueAtTime(vol, at);
   g.gain.exponentialRampToValueAtTime(0.001, at + dur);
-  o.connect(g); g.connect(ac.destination);
+  o.connect(g); g.connect(ac.sfx);
   o.start(at); o.stop(at + dur + 0.01);
 }
 // 버튼 '톡'
@@ -886,7 +926,7 @@ const 팝업음 = {
     g.gain.linearRampToValueAtTime(0.05, s + 0.05);
     g.gain.setValueAtTime(0.05, s + len - 0.15);
     g.gain.linearRampToValueAtTime(0.0001, s + len);
-    o.connect(g); g.connect(ac.destination);
+    o.connect(g); g.connect(ac.sfx);
     o.start(s); o.stop(s + len + 0.01);
   },
   /* 엔딩 "빰 빠 밤~" — 짧게 두 번, 마지막은 화음으로 길게. 배드엔딩은 같은 리듬을 단조로 낮게 */
@@ -2721,38 +2761,59 @@ function renderShop() {
   return h;
 }
 
+/* 스킬 화면은 계열별 탭으로 나눠 한 번에 한 계열만 보여준다. 저장하지 않는 화면 상태.
+   탭 이름 옆 숫자 = 그 계열에서 지금 찍을 수 있는 노드 수 */
+let SKTAB = 0;
+const 계열이름 = c => c.계열.replace(/관련$/, '');
+
+// 계열 c 의 노드마다 해금·가능 여부. prevDone 은 구간 안에서 앞 노드를 다 찍었는지
+function 계열노드(c) {
+  const out = [];
+  const 기본완료 = c.구간[0].nodes.every(x => sk(x.id) >= x.max);
+  c.구간.forEach(g => {
+    let prevDone = true;
+    g.nodes.forEach(n => {
+      const lv = sk(n.id);
+      const unlocked = (g.nm === '기본') ? prevDone : (기본완료 && prevDone);
+      const 트리ok = n.end ? treeDone(g.tree) : true;
+      const 돈ok  = n.end ? S.money >= CFG.엔딩돈 : true;
+      const can = n.end ? (unlocked && lv < n.max && 트리ok && 돈ok)      // 엔딩은 SP 불필요
+                        : (unlocked && lv < n.max && S.sp >= 1);
+      out.push({ g, n, lv, unlocked, 트리ok, 돈ok, can });
+      prevDone = prevDone && lv >= n.max;
+    });
+  });
+  return out;
+}
+
 function renderSkill() {
   let h = '<h3>스킬 <span style="float:right;font-weight:normal">보유 SP ' + S.sp + '</span></h3>';
+  if (!TREE[SKTAB]) SKTAB = 0;
 
-  TREE.forEach(c => {
-    h += '<div class="tree"><div class="hd">' + c.계열 + '  <span style="font-weight:normal;font-size:12px">— ' + c.축 + '</span></div>';
-    c.구간.forEach(g => {
-      h += '<div style="font-size:12px;margin:6px 0 3px">' + g.nm + '</div>';
-      let prevDone = true;
-      g.nodes.forEach((n, idx) => {
-        const lv = sk(n.id);
-        const 기본완료 = c.구간[0].nodes.every(x => sk(x.id) >= x.max);
-        const unlocked = (g.nm === '기본') ? prevDone : (기본완료 && prevDone);
-        const 트리ok = n.end ? treeDone(g.tree) : true;
-        const 돈ok  = n.end ? S.money >= CFG.엔딩돈 : true;
-        const can = n.end ? (unlocked && lv < n.max && 트리ok && 돈ok)      // 엔딩은 SP 불필요
-                          : (unlocked && lv < n.max && S.sp >= 1);
-        h += '<div class="node' + (unlocked ? '' : ' locked') + (lv >= n.max ? ' maxed' : '')
-           + (n.end ? ' endnode' : '') + '">'
-           + '<div class="info"><b>' + esc(n.id) + '</b> — ' + esc(n.d)
-           + (n.q ? '<div class="q">"' + esc(n.q) + '"</div>' : '')
-           + (n.end ? '<div class="q">조건: 트리 완주 ' + (트리ok ? 'O' : 'X')
-                      + ' · 돈 ' + won(S.money) + ' / ' + won(CFG.엔딩돈)
-                      + ' ' + (돈ok ? 'O' : 'X') + '  (SP 불필요)</div>' : '')
-           + '</div>'
-           + '<div class="lv">' + (n.max > 1 ? lv + '/' + n.max : (lv ? '완료' : '-')) + '</div>'
-           + '<button data-sk="' + esc(n.id) + '" data-tree="' + (g.tree || '') + '"'
-           + (can ? '' : ' disabled') + '>' + (unlocked && n.end ? '엔딩' : '+1') + '</button></div>';
-        prevDone = prevDone && lv >= n.max;
-      });
-    });
-    h += '</div>';
+  h += '<div class="sktabs">' + TREE.map((c, i) => {
+    const 가능 = 계열노드(c).filter(x => x.can).length;
+    return '<button data-sktab="' + i + '"' + (i === SKTAB ? ' class="on"' : '') + '>' + esc(계열이름(c))
+      + (가능 ? '<span class="sp">' + 가능 + '</span>' : '') + '</button>';
+  }).join('') + '</div>';
+
+  const c = TREE[SKTAB];
+  h += '<div class="tree"><div class="hd">' + c.계열 + '  <span style="font-weight:normal;font-size:12px">— ' + c.축 + '</span></div>';
+  let 앞구간 = null;
+  계열노드(c).forEach(({ g, n, lv, unlocked, 트리ok, 돈ok, can }) => {
+    if (g !== 앞구간) { h += '<div style="font-size:12px;margin:6px 0 3px">' + g.nm + '</div>'; 앞구간 = g; }
+    h += '<div class="node' + (unlocked ? '' : ' locked') + (lv >= n.max ? ' maxed' : '')
+       + (n.end ? ' endnode' : '') + '">'
+       + '<div class="info"><b>' + esc(n.id) + '</b> — ' + esc(n.d)
+       + (n.q ? '<div class="q">"' + esc(n.q) + '"</div>' : '')
+       + (n.end ? '<div class="q">조건: 트리 완주 ' + (트리ok ? 'O' : 'X')
+                  + ' · 돈 ' + won(S.money) + ' / ' + won(CFG.엔딩돈)
+                  + ' ' + (돈ok ? 'O' : 'X') + '  (SP 불필요)</div>' : '')
+       + '</div>'
+       + '<div class="lv">' + (n.max > 1 ? lv + '/' + n.max : (lv ? '완료' : '-')) + '</div>'
+       + '<button data-sk="' + esc(n.id) + '" data-tree="' + (g.tree || '') + '"'
+       + (can ? '' : ' disabled') + '>' + (unlocked && n.end ? '엔딩' : '+1') + '</button></div>';
   });
+  h += '</div>';
   return h;
 }
 
@@ -2779,14 +2840,21 @@ function renderDex() {
   return h;
 }
 
+// 볼륨 슬라이더 — 끌 때마다 render 하면 슬라이더가 새로 그려져 손가락이 떨어진다. 숫자만 고친다
+const 볼륨칸 = k => '<span class="vol"><input type="range" min="0" max="100" step="5" value="' + volGet(k)
+  + '" data-vol="' + k + '" aria-label="' + (k === 'bgm' ? '음악' : '효과음') + ' 크기">'
+  + '<span class="vn" data-voln="' + k + '">' + volGet(k) + '%</span></span>';
+
 function renderSet() {
   return '<h3>화면</h3><table>'
     + row('취침 화면', (sleepScreenOn() ? '보기' : '건너뛰기')
         + ' <button data-opt="sleep" class="mini">' + (sleepScreenOn() ? '끄기' : '켜기') + '</button>')
     + row('배경음악', (BGM_BAD ? '음악 파일 준비 중' : (bgmOn() ? '켜짐' : '꺼짐'))
         + (BGM_BAD ? '' : ' <button data-opt="bgm" class="mini">' + (bgmOn() ? '끄기' : '켜기') + '</button>'))
+    + (BGM_BAD ? '' : row('음악 크기', 볼륨칸('bgm')))
     + row('효과음', (sfxOn() ? '켜짐' : '꺼짐')
         + ' <button data-opt="sfx" class="mini">' + (sfxOn() ? '끄기' : '켜기') + '</button>')
+    + row('효과음 크기', 볼륨칸('sfx'))
     + '</table>'
     + '<h3>저장</h3><table>'
     + row('상태', 저장가능() ? '저장됨' : '저장 안 됨')
@@ -3295,6 +3363,22 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) bgmPause(); else if (BGM) bgmPlay();
 });
 
+// 볼륨 슬라이더 — 끄는 동안(input) 바로 반영, 손을 떼면(change) 효과음으로 크기를 들려준다
+document.addEventListener('input', e => {
+  const k = e.target.dataset && e.target.dataset.vol;
+  if (!k) return;
+  const v = +e.target.value;
+  volSet(k, v);
+  const n = document.querySelector('[data-voln="' + k + '"]');
+  if (n) n.textContent = v + '%';
+  if (k === 'bgm') bgmVolApply();
+});
+document.addEventListener('change', e => {
+  const k = e.target.dataset && e.target.dataset.vol;
+  if (k === 'sfx') 효과음();
+  if (k === 'bgm') bgmPlay();
+});
+
 // iOS 사파리는 touchstart 리스너가 하나라도 있어야 :active 가 걸린다 (버튼 눌림 표시용)
 document.addEventListener('touchstart', () => {}, { passive: true });
 
@@ -3430,6 +3514,10 @@ document.addEventListener('click', e => {
 
   if (t.dataset.estate) { buyEstate(); return; }
 
+  if (t.dataset.sktab !== undefined) {
+    SKTAB = +t.dataset.sktab; LASTKEY = null;   // 다른 계열로 가면 스크롤을 맨 위로
+    render(); return;
+  }
   if (t.dataset.sk) {
     const id = t.dataset.sk, tree = t.dataset.tree;
     let node = null;
